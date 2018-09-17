@@ -77,7 +77,7 @@ int deleteThreadFromPriorityQueue(PFILA2 pFila)
     return DeleteAtIteratorFila2(pFila);
 }
 
-void deleteCurrentThread(PFILA2 pFila)
+void deleteCurrentThread()
 {
     PFILA2 pFilaCurrent = getRunningThread();
 
