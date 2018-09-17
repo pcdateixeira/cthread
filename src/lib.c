@@ -14,12 +14,17 @@ typedef struct sMultiLevel {
 MULTILEVEL PriorityQueue;
 PFILA2 CurrentThread;
 
+CreateFila2(PriorityQueue.high);
+CreateFila2(PriorityQueue.medium);
+CreateFila2(PriorityQueue.low);
+
 /*-------------------------------------------------------------------
                             ESCALONADOR
 -------------------------------------------------------------------*/
 
 PFILA2 findThreadByID(PFILA2 pFila, int id)
 {
+    FirstFila2(pFila);
     TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(pFila);
 
     while(tcb != NULL)
