@@ -20,7 +20,7 @@ PFILA2 CurrentThread;
 
 PFILA2 findThreadByID(PFILA2 pFila, int id)
 {
-    TCB_t *tcb = GetAtIteratorFila2(pFila);
+    TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(pFila);
 
     while(tcb != NULL)
     {
@@ -28,7 +28,7 @@ PFILA2 findThreadByID(PFILA2 pFila, int id)
             return pFila;
 
         NextFila2(pFila);
-        tcb = GetAtIteratorFila2(pFila);
+        tcb = (TCB_t *)GetAtIteratorFila2(pFila);
     }
 
     return NULL;
@@ -56,11 +56,11 @@ int addThreadToPriorityQueue(TCB_t *tcb)
     int flag;
 
     if(tcb->prio == 0)
-        flag = AppendFila2(PriorityQueue.high, tcb);
+        flag = AppendFila2(PriorityQueue.high, (void *)tcb);
     else if(tcb->prio == 1)
-        flag = AppendFila2(PriorityQueue.medium, tcb);
+        flag = AppendFila2(PriorityQueue.medium, (void *)tcb);
     else if(tcb->prio == 2)
-        flag = AppendFila2(PriorityQueue.low, tcb);
+        flag = AppendFila2(PriorityQueue.low, (void *)tcb);
     else
         return -1;
 
@@ -101,7 +101,7 @@ PFILA2 getNonEmptyQueue()
 PFILA2 getReadyThread()
 {
     PFILA2 PQueue = getNonEmptyQueue();
-    TCB_t *tcb = GetAtIteratorFila2(PQueue);
+    TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
 
     while(tcb != NULL)
     {
@@ -109,7 +109,7 @@ PFILA2 getReadyThread()
             return PQueue;
 
         NextFila2(PQueue);
-        tcb = GetAtIteratorFila2(PQueue);
+        tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
     }
 
     return NULL;
@@ -119,8 +119,8 @@ void ScheduleThreads()
 {
     PFILA2 pFilaCurrent = getRunningThread();
     PFILA2 pFilaReady = getReadyThread();
-    TCB_t *TCBCurrent = GetAtIteratorFila2(pFilaCurrent);
-    TCB_t *TCBReady = GetAtIteratorFila2(pFilaReady);
+    TCB_t *TCBCurrent = (TCB_t *)GetAtIteratorFila2(pFilaCurrent);
+    TCB_t *TCBReady = (TCB_t *)GetAtIteratorFila2(pFilaReady);
 
     if(TCBReady == NULL)
         return;
