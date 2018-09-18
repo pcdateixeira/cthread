@@ -12,7 +12,7 @@ typedef struct sMultiLevel {
 } MULTILEVEL;
 
 MULTILEVEL PriorityQueue;
-PFILA2 CurrentThread;
+int CurrentThreadID;
 
 CreateFila2(PriorityQueue.high);
 CreateFila2(PriorityQueue.medium);
@@ -22,18 +22,18 @@ CreateFila2(PriorityQueue.low);
                             ESCALONADOR
 -------------------------------------------------------------------*/
 
-PFILA2 findThreadByID(PFILA2 pFila, int id)
+PFILA2 findThreadByID(PFILA2 PQueue, int id)
 {
-    FirstFila2(pFila);
-    TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(pFila);
+    FirstFila2(PQueue);
+    TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
 
     while(tcb != NULL)
     {
         if(tcb->tid == id)
-            return pFila;
+            return PQueue;
 
-        NextFila2(pFila);
-        tcb = (TCB_t *)GetAtIteratorFila2(pFila);
+        NextFila2(PQueue);
+        tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
     }
 
     return NULL;
@@ -56,7 +56,7 @@ PFILA2 findThreadByIDInAllQueues(int id)
 }
 
 // Coloca o TCB em um novo item e coloca-o no final da fila correspondente a sua prioridade
-int addThreadToPriorityQueue(TCB_t *tcb)
+int addThreadToQueue(TCB_t *tcb)
 {
     int flag;
 
@@ -74,19 +74,18 @@ int addThreadToPriorityQueue(TCB_t *tcb)
 
 PFILA2 getRunningThread()
 {
-    return CurrentThread;
+    return findThreadByIDInAllQueues(CurrentThreadID);
 }
 
-int deleteThreadFromPriorityQueue(PFILA2 pFila)
+int deleteThreadByID(int id)
 {
-    return DeleteAtIteratorFila2(pFila);
+    PFILA2 PQueue = findThreadByIDInAllQueues(id);
+    return DeleteAtIteratorFila2(PQueue);
 }
 
 void deleteCurrentThread()
 {
-    PFILA2 pFilaCurrent = getRunningThread();
-
-    deleteThreadFromPriorityQueue(pFilaCurrent);
+    deleteThreadByID(CurrentThreadID);
 }
 
 // Retorna ponteiro para uma fila de prioridade que não estiver vazia com iterador da fila no primeiro item da mesma
@@ -122,10 +121,10 @@ PFILA2 getReadyThread()
 
 void ScheduleThreads()
 {
-    PFILA2 pFilaCurrent = getRunningThread();
-    PFILA2 pFilaReady = getReadyThread();
-    TCB_t *TCBCurrent = (TCB_t *)GetAtIteratorFila2(pFilaCurrent);
-    TCB_t *TCBReady = (TCB_t *)GetAtIteratorFila2(pFilaReady);
+    PFILA2 PQueueCurrent = getRunningThread();
+    PFILA2 PQueueReady = getReadyThread();
+    TCB_t *TCBCurrent = (TCB_t *)GetAtIteratorFila2(PQueueCurrent);
+    TCB_t *TCBReady = (TCB_t *)GetAtIteratorFila2(PQueueReady);
 
     if(TCBReady == NULL)
         return;
@@ -142,7 +141,7 @@ void ScheduleThreads()
             TCBCurrent->state = PROCST_APTO;
             TCBReady->state = PROCST_EXEC;
 
-            CurrentThread = pFilaReady;
+            CurrentThreadID = TCBReady->tid;
             swapcontext(TCBCurrent->context, TCBReady->context);
         }
     }
@@ -150,7 +149,7 @@ void ScheduleThreads()
     {
         TCBReady->state = PROCST_EXEC;
 
-        CurrentThread = pFilaReady;
+        CurrentThreadID = TCBReady->tid;
         swapcontext(TCBCurrent->context, TCBReady->context);
     }
 }
