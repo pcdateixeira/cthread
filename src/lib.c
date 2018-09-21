@@ -5,6 +5,17 @@
 #include "../include/cthread.h"
 #include "../include/cdata.h"
 
+
+#define LOW_PRIORITY 2
+#define MEDIUM_PRIORITY 1
+#define HIGH_PRIORITY 0
+
+#define BYTES_IN_STACK 2048
+
+typedef struct tcbExtra{ //relacionado a variavel data do tcb,coloquem aqui as variaveis que voces precisarem usar no tcb que nao foi definido pelos professores
+	int continueThread ;                //identifica se a thread ja passou ou nao pelo escalonador,toda vez que um swapcontext eh chamado,inverter o continueThread dos tcb involvidos
+}tcbExtra_t;
+
 typedef struct sMultiLevel {
 	struct sFila2 *high;
 	struct sFila2 *medium;
@@ -13,6 +24,9 @@ typedef struct sMultiLevel {
 
 MULTILEVEL PriorityQueue;
 int CurrentThreadID;
+
+int isCthreadInitialized =0 ;
+int idCounter = -1;
 
 CreateFila2(PriorityQueue.high);
 CreateFila2(PriorityQueue.medium);
@@ -141,13 +155,17 @@ void ScheduleThreads()
             TCBCurrent->state = PROCST_APTO;
             TCBReady->state = PROCST_EXEC;
 
-            CurrentThreadID = TCBReady->tid;
+						(*tcbExtra_t)TCBCurrent->data->continueThread = 0;
+						(*tcbExtra_t)TCBReady->data->continueThread = 1;
+
+						CurrentThreadID = TCBReady->tid;
             swapcontext(TCBCurrent->context, TCBReady->context);
         }
     }
     else
     {
         TCBReady->state = PROCST_EXEC;
+				(*tcbExtra_t)TCBReady->data->continueThread = 1;
 
         CurrentThreadID = TCBReady->tid;
         swapcontext(TCBCurrent->context, TCBReady->context);
@@ -155,11 +173,98 @@ void ScheduleThreads()
 }
 
 /*-------------------------------------------------------------------
-                            ESCALONADOR
+                            ESCALONADOR(fim)
 -------------------------------------------------------------------*/
 
+/*-------------------------------------------------------------------
+														funcoes suporte (lembrar de colocar um nome melhor para essas funcoes)
+---------------------------------------------------------------------*/
+
+int getNewThreadId(){
+	idCounter++;
+	return idCounter;
+}
+
+
+void createMainTCB(){
+	TCB_t* mainThread ;
+	mainThread = malloc(sizeof(TCB_t));          //criar uma funcao para alocar de maneira segura LEMBRAR
+	mainThread->tid = getNewThreadId();
+	mainThread->state = PROCST_EXEC;
+	mainThread->prio = LOW_PRIORITY;
+
+
+	getContext(&(mainThread->context));
+
+	tcbExtra_t* mainExtra = malloc(sizeof(tcbExtra_t));  //alocando as variaveis que nos julgaremos uteis para a implementacao;
+	mainExtra->continueThread = 0 ;
+	(tcbExtra_t*)mainThread->data = mainExtra;
+
+	addThreadToQueue(mainThread);
+
+	return;
+}
+
+void addNewTCB(TCB_t* newThread,TCB_t* fatherThread,int prio,void* (*start)(void*),void *arg){ //daria para fazer o numero de argumentos ficar menor,mas nao sei se vale muito a pena
+
+	newThread = malloc(sizeof(TCB_t));
+	newThread->tid = getNewThreadId();
+	newThread->state = PROCST_APTO;
+	newThread->prio = prio;
+
+	getContext(&(newThread->context));                                 //criacao do novo contexto
+	newThread->context.ss_sp = malloc(sizeof(char)*BYTES_IN_STACK);
+	newThread->context.ss_size = sizeof(char)*BYTES_IN_STACK
+	newThread->context.uc_link = &(fatherThread->context);
+	makecontext(&(newThread->context),start,1,arg);
+
+	tcbExtra_t* newExtra = malloc(sizeof(tcbExtra_t));              //recursos extras
+	newExtra->continueThread = 0;
+	(tcbExtra_t*)newThread->data = newExtra;
+
+	addThreadToQueue(newThread);
+
+}
+
+void initializeCthread(){               //se no futuro mais coisas precisem ser inicializadas para cthread colocar aqui
+	createMainThread();
+	isCthreadInitialed = 1;
+	return;
+}
+
+void updateContext(TCB_t* currentTCB){
+	ucontext_t* currentContext;
+	getContext(currentContext);
+	currrentTCB->context = *currentContext;
+}
+
+void getCurrentThread(TCB_t** currentTCB){
+	*currentTCB=(TCB_t*)GetAtIteratorFila2(getRunningThread());
+}
+
+
+/*-------------------------------------------------------------------
+														funcoes suporte-fim (lembrar de colocar um nome melhor para essas funcoes)
+---------------------------------------------------------------------*/
+
 int ccreate (void* (*start)(void*), void *arg, int prio) {
-	return -1;
+
+
+	TCB_t* currentTCB,newTCB;
+
+
+	if(!isCthreadInitialized){
+		initializeCthread();
+	}
+
+	getCurrentThread(&currentTCB);
+
+	addNewTCB(newTCB,currentTCB,prio,start,arg);
+
+	ScheduleThreads();
+
+	return 0;       //LEMBRAR ,colocar testes nas funcoes acima para aumentar a resiliencia,de acordo com o pdf -1 eh considero erro e 0 eh sucesso na operacao
+	//return -1;
 }
 
 int csetprio(int tid, int prio) {
@@ -190,4 +295,3 @@ int cidentify (char *name, int size) {
 	strncpy (name, "Sergio Cechin - 2017/1 - Teste de compilacao.", size);
 	return 0;
 }
-
