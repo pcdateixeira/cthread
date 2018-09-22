@@ -13,7 +13,7 @@
 #define BYTES_IN_STACK 2048
 
 typedef struct tcbExtra{ //relacionado a variavel data do tcb,coloquem aqui as variaveis que voces precisarem usar no tcb que nao foi definido pelos professores
-	int continueThread ;                //identifica se a thread ja passou ou nao pelo escalonador,toda vez que um swapcontext eh chamado,inverter o continueThread dos tcb involvidos
+	//  ;
 }tcbExtra_t;
 
 typedef struct sMultiLevel {
@@ -155,9 +155,6 @@ void ScheduleThreads()
             TCBCurrent->state = PROCST_APTO;
             TCBReady->state = PROCST_EXEC;
 
-						(*tcbExtra_t)TCBCurrent->data->continueThread = 0;
-						(*tcbExtra_t)TCBReady->data->continueThread = 1;
-
 						CurrentThreadID = TCBReady->tid;
             swapcontext(TCBCurrent->context, TCBReady->context);
         }
@@ -165,7 +162,6 @@ void ScheduleThreads()
     else
     {
         TCBReady->state = PROCST_EXEC;
-				(*tcbExtra_t)TCBReady->data->continueThread = 1;
 
         CurrentThreadID = TCBReady->tid;
         swapcontext(TCBCurrent->context, TCBReady->context);
@@ -180,11 +176,11 @@ void ScheduleThreads()
 														funcoes suporte (lembrar de colocar um nome melhor para essas funcoes)
 ---------------------------------------------------------------------*/
 
+
 int getNewThreadId(){
 	idCounter++;
 	return idCounter;
 }
-
 
 void createMainTCB(){
 	TCB_t* mainThread ;
@@ -197,7 +193,6 @@ void createMainTCB(){
 	getContext(&(mainThread->context));
 
 	tcbExtra_t* mainExtra = malloc(sizeof(tcbExtra_t));  //alocando as variaveis que nos julgaremos uteis para a implementacao;
-	mainExtra->continueThread = 0 ;
 	(tcbExtra_t*)mainThread->data = mainExtra;
 
 	addThreadToQueue(mainThread);
@@ -205,7 +200,10 @@ void createMainTCB(){
 	return;
 }
 
-void addNewTCB(TCB_t* newThread,TCB_t* fatherThread,int prio,void* (*start)(void*),void *arg){ //daria para fazer o numero de argumentos ficar menor,mas nao sei se vale muito a pena
+void addNewTCB(TCB_t* fatherThread,int prio,void* (*start)(void*),void *arg){ //daria para fazer o numero de argumentos ficar menor,mas nao sei se vale muito a pena
+
+
+	TCB_t* newThread;
 
 	newThread = malloc(sizeof(TCB_t));
 	newThread->tid = getNewThreadId();
@@ -219,7 +217,6 @@ void addNewTCB(TCB_t* newThread,TCB_t* fatherThread,int prio,void* (*start)(void
 	makecontext(&(newThread->context),start,1,arg);
 
 	tcbExtra_t* newExtra = malloc(sizeof(tcbExtra_t));              //recursos extras
-	newExtra->continueThread = 0;
 	(tcbExtra_t*)newThread->data = newExtra;
 
 	addThreadToQueue(newThread);
@@ -232,10 +229,10 @@ void initializeCthread(){               //se no futuro mais coisas precisem ser 
 	return;
 }
 
-void updateContext(TCB_t* currentTCB){
+void updateContext(TCB_t** currentTCB){
 	ucontext_t* currentContext;
 	getContext(currentContext);
-	currrentTCB->context = *currentContext;
+	*currrentTCB->context = *currentContext;
 }
 
 void getCurrentThread(TCB_t** currentTCB){
@@ -250,7 +247,7 @@ void getCurrentThread(TCB_t** currentTCB){
 int ccreate (void* (*start)(void*), void *arg, int prio) {
 
 
-	TCB_t* currentTCB,newTCB;
+	TCB_t* currentTCB;
 
 
 	if(!isCthreadInitialized){
@@ -259,7 +256,7 @@ int ccreate (void* (*start)(void*), void *arg, int prio) {
 
 	getCurrentThread(&currentTCB);
 
-	addNewTCB(newTCB,currentTCB,prio,start,arg);
+	addNewTCB(currentTCB,prio,start,arg);
 
 	ScheduleThreads();
 
