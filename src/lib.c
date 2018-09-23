@@ -10,7 +10,7 @@
 #define MEDIUM_PRIORITY 1
 #define HIGH_PRIORITY 0
 
-#define BYTES_IN_STACK 2048
+#define BYTES_IN_STACK 2048         //considerando sizeof(char) == 1 byte
 
 typedef struct tcbExtra{ //relacionado a variavel data do tcb,coloquem aqui as variaveis que voces precisarem usar no tcb que nao foi definido pelos professores
 	//  ;
@@ -229,14 +229,18 @@ void initializeCthread(){               //se no futuro mais coisas precisem ser 
 	return;
 }
 
-void updateContext(TCB_t** currentTCB){
-	ucontext_t* currentContext;
-	getContext(currentContext);
-	*currrentTCB->context = *currentContext;
-}
 
-void getCurrentThread(TCB_t** currentTCB){
-	*currentTCB=(TCB_t*)GetAtIteratorFila2(getRunningThread());
+int getCurrentThread(TCB_t** currentTCB){   //retorna 0 para sucesso -1 caso contrario
+	PFILA2 filaTemp;
+
+	filaTemp=getRunningThread();
+
+	if(filaTemp==NULL)
+		return -1;
+
+	*currentTCB=(TCB_t*)((PNODE2)GetAtIteratorFila2(filaTemp))->node;
+
+	return 0;
 }
 
 
@@ -254,22 +258,45 @@ int ccreate (void* (*start)(void*), void *arg, int prio) {
 		initializeCthread();
 	}
 
-	getCurrentThread(&currentTCB);
+	if(getCurrentThread(&currentTCB)<0) return -1;
 
 	addNewTCB(currentTCB,prio,start,arg);
 
 	ScheduleThreads();
 
-	return 0;       //LEMBRAR ,colocar testes nas funcoes acima para aumentar a resiliencia,de acordo com o pdf -1 eh considero erro e 0 eh sucesso na operacao
-	//return -1;
+	return 0;
+
 }
 
 int csetprio(int tid, int prio) {
-	return -1;
+
+	PFILA2 filaTemp;
+	PNODE2 nodeTemp;
+
+	if(findThreadByID(filaTemp,tid)==NULL)
+		return -1;
+
+	nodeTemp=(PNODE2)GetAtIteratorFila2(filaTemp);
+
+	((TCB_t*)nodeTemp->node)->prio=prio;
+
+	ScheduleThreads();
+
+	return 0;
 }
 
 int cyield(void) {
-	return -1;
+
+	TCB_t* currentTCB;
+
+	if(getCurrentThread(&currentTCB)<0)
+		return -1;
+
+	currentTCB->state=PROCST_APTO;
+
+	ScheduleThreads();
+
+	return 0;
 }
 
 int cjoin(int tid) {
