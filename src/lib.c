@@ -10,7 +10,8 @@
 #define MEDIUM_PRIORITY 1
 #define HIGH_PRIORITY 0
 
-#define BYTES_IN_STACK 2048         //considerando sizeof(char) == 1 byte
+#define BYTES_IN_STACK 8388608        //considerando sizeof(char) == 1 byte,nao achei o nome da constante de default_stack_size da ucontext_t,entao criei essa
+																																						//O tamanho eh 8MB,que eh mais do que o suficiente
 
 typedef struct tcbExtra{ //relacionado a variavel data do tcb,coloquem aqui as variaveis que voces precisarem usar no tcb que nao foi definido pelos professores
 	//  ;
@@ -25,8 +26,9 @@ typedef struct sMultiLevel {
 MULTILEVEL PriorityQueue;
 int CurrentThreadID;
 
-int isCthreadInitialized =0 ;
-int idCounter = -1;
+int isCthreadInitialized =0 ;                //checar se a maind ja ganhou pcb
+int idCounter = -1;                          //para gerar os ids
+int isEndOfThread = 0;                       //avisar para o ESCALONADOR se eh o fim de uma thread ou nao
 
 CreateFila2(PriorityQueue.high);
 CreateFila2(PriorityQueue.medium);
@@ -140,6 +142,11 @@ void ScheduleThreads()
     TCB_t *TCBCurrent = (TCB_t *)GetAtIteratorFila2(PQueueCurrent);
     TCB_t *TCBReady = (TCB_t *)GetAtIteratorFila2(PQueueReady);
 
+
+		if(isEndOfThread == 1){
+			//funcao que lida com semaforo
+		}
+
     if(TCBReady == NULL)
         return;
 
@@ -166,6 +173,16 @@ void ScheduleThreads()
         CurrentThreadID = TCBReady->tid;
         swapcontext(TCBCurrent->context, TCBReady->context);
     }
+}
+
+void ScheduleThreadsPreemptive(){
+	isEndOfThread=0;
+	ScheduleThreads();
+}
+
+void ScheduleThreadsEndOfThread(){
+	isEndOfThread=1;
+	ScheduleThreads();
 }
 
 /*-------------------------------------------------------------------
@@ -213,7 +230,7 @@ void addNewTCB(TCB_t* fatherThread,int prio,void* (*start)(void*),void *arg){ //
 	getContext(&(newThread->context));                                 //criacao do novo contexto
 	newThread->context.ss_sp = malloc(sizeof(char)*BYTES_IN_STACK);
 	newThread->context.ss_size = sizeof(char)*BYTES_IN_STACK
-	newThread->context.uc_link = &(fatherThread->context);
+	newThread->context.uc_link = &ScheduleThreadsEndOfThread;  //eu acho que eh assim que chama o ponteiro da funcao,nao tenho certeza
 	makecontext(&(newThread->context),start,1,arg);
 
 	tcbExtra_t* newExtra = malloc(sizeof(tcbExtra_t));              //recursos extras
@@ -262,7 +279,7 @@ int ccreate (void* (*start)(void*), void *arg, int prio) {
 
 	addNewTCB(currentTCB,prio,start,arg);
 
-	ScheduleThreads();
+	ScheduleThreadsPreemptive();
 
 	return 0;
 
@@ -280,7 +297,7 @@ int csetprio(int tid, int prio) {
 
 	((TCB_t*)nodeTemp->node)->prio=prio;
 
-	ScheduleThreads();
+	ScheduleThreadsPreemptive();
 
 	return 0;
 }
@@ -294,7 +311,7 @@ int cyield(void) {
 
 	currentTCB->state=PROCST_APTO;
 
-	ScheduleThreads();
+	ScheduleThreadsPreemptive();
 
 	return 0;
 }
