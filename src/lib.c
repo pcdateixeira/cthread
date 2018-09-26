@@ -19,9 +19,9 @@ typedef struct tcbExtra{ //relacionado a variavel data do tcb,coloquem aqui as v
 }tcbExtra_t;
 
 typedef struct sMultiLevel {
-	struct sFila2 *high;
-	struct sFila2 *medium;
-	struct sFila2 *low;
+	struct sFila2 high;
+	struct sFila2 medium;
+	struct sFila2 low;
 } MULTILEVEL;
 
 MULTILEVEL PriorityQueue;
@@ -31,9 +31,9 @@ int isCthreadInitialized =0 ;                //checar se a maind ja ganhou pcb
 int idCounter = -1;                          //para gerar os ids
 int isEndOfThread = 0;                       //avisar para o ESCALONADOR se eh o fim de uma thread ou nao
 
-CreateFila2(PriorityQueue.high);
-CreateFila2(PriorityQueue.medium);
-CreateFila2(PriorityQueue.low);
+CreateFila2(&PriorityQueue.high);
+CreateFila2(&PriorityQueue.medium);
+CreateFila2(&PriorityQueue.low);
 
 /*-------------------------------------------------------------------
                             ESCALONADOR
@@ -42,7 +42,7 @@ CreateFila2(PriorityQueue.low);
 PFILA2 findThreadByID(PFILA2 PQueue, int id)
 {
     FirstFila2(PQueue);
-    TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
+    TCB_t *tcb = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueue))->node;
 
     while(tcb != NULL)
     {
@@ -50,7 +50,7 @@ PFILA2 findThreadByID(PFILA2 PQueue, int id)
             return PQueue;
 
         NextFila2(PQueue);
-        tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
+        tcb = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueue))->node;
     }
 
     return NULL;
@@ -58,9 +58,9 @@ PFILA2 findThreadByID(PFILA2 PQueue, int id)
 
 PFILA2 findThreadByIDInAllQueues(int id)
 {
-    PFILA2 PQueueHigh = findThreadByID(PriorityQueue.high, id);
-    PFILA2 PQueueMedium = findThreadByID(PriorityQueue.medium, id);
-    PFILA2 PQueueLow = findThreadByID(PriorityQueue.low, id);
+    PFILA2 PQueueHigh = findThreadByID(&PriorityQueue.high, id);
+    PFILA2 PQueueMedium = findThreadByID(&PriorityQueue.medium, id);
+    PFILA2 PQueueLow = findThreadByID(&PriorityQueue.low, id);
 
     if(PQueueHigh != NULL)
         return PQueueHigh;
@@ -76,13 +76,19 @@ PFILA2 findThreadByIDInAllQueues(int id)
 int addThreadToQueue(TCB_t *tcb)
 {
     int flag;
+    PNODE2 newNode;
+    
+    newNode = malloc(sizeof(NODE2));
+    newNode->node = (void *)tcb;
+    newNode->ant = NULL;
+    newNode->next = NULL;
 
     if(tcb->prio == 0)
-        flag = AppendFila2(PriorityQueue.high, (void *)tcb);
+        flag = AppendFila2(&PriorityQueue.high, (void *)newNode);
     else if(tcb->prio == 1)
-        flag = AppendFila2(PriorityQueue.medium, (void *)tcb);
+        flag = AppendFila2(&PriorityQueue.medium, (void *)newNode);
     else if(tcb->prio == 2)
-        flag = AppendFila2(PriorityQueue.low, (void *)tcb);
+        flag = AppendFila2(&PriorityQueue.low, (void *)newNode);
     else
         return -1;
 
@@ -108,12 +114,12 @@ void deleteCurrentThread()
 // Retorna ponteiro para uma fila de prioridade que não estiver vazia com iterador da fila no primeiro item da mesma
 PFILA2 getNonEmptyQueue()
 {
-    if(FirstFila2(PriorityQueue.high) == 0)
-        return PriorityQueue.high;
-    else if(FirstFila2(PriorityQueue.medium) == 0)
-        return PriorityQueue.medium;
-    else if(FirstFila2(PriorityQueue.low) == 0)
-        return PriorityQueue.low;
+    if(FirstFila2(&PriorityQueue.high) == 0)
+        return &PriorityQueue.high;
+    else if(FirstFila2(&PriorityQueue.medium) == 0)
+        return &PriorityQueue.medium;
+    else if(FirstFila2(&PriorityQueue.low) == 0)
+        return &PriorityQueue.low;
     else
         return NULL;
 }
@@ -122,7 +128,7 @@ PFILA2 getNonEmptyQueue()
 PFILA2 getReadyThread()
 {
     PFILA2 PQueue = getNonEmptyQueue();
-    TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
+    TCB_t *tcb = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueue))->node;
 
     while(tcb != NULL)
     {
@@ -130,7 +136,7 @@ PFILA2 getReadyThread()
             return PQueue;
 
         NextFila2(PQueue);
-        tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
+        tcb = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueue))->node;
     }
 
     return NULL;
@@ -140,8 +146,8 @@ void ScheduleThreads()
 {
     PFILA2 PQueueCurrent = getRunningThread();
     PFILA2 PQueueReady = getReadyThread();
-    TCB_t *TCBCurrent = (TCB_t *)GetAtIteratorFila2(PQueueCurrent);
-    TCB_t *TCBReady = (TCB_t *)GetAtIteratorFila2(PQueueReady);
+    TCB_t *TCBCurrent = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueueCurrent))->node;
+    TCB_t *TCBReady = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueueReady))->node;
 
 
 		if(isEndOfThread == 1){
