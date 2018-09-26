@@ -1,5 +1,6 @@
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "../include/support.h"
 #include "../include/cthread.h"
@@ -207,7 +208,7 @@ void createMainTCB(){
 	mainThread->prio = LOW_PRIORITY;
 
 
-	getContext(&(mainThread->context));
+	getcontext(&(mainThread->context));
 
 	tcbExtra_t* mainExtra = malloc(sizeof(tcbExtra_t));  //alocando as variaveis que nos julgaremos uteis para a implementacao;
 	(tcbExtra_t*)mainThread->data = mainExtra;
@@ -227,9 +228,9 @@ void addNewTCB(TCB_t* fatherThread,int prio,void* (*start)(void*),void *arg){ //
 	newThread->state = PROCST_APTO;
 	newThread->prio = prio;
 
-	getContext(&(newThread->context));                                 //criacao do novo contexto
+	getcontext(&(newThread->context));                                 //criacao do novo contexto
 	newThread->context.ss_sp = malloc(sizeof(char)*BYTES_IN_STACK);
-	newThread->context.ss_size = sizeof(char)*BYTES_IN_STACK
+	newThread->context.ss_size = sizeof(char)*BYTES_IN_STACK;
 	newThread->context.uc_link = &ScheduleThreadsEndOfThread;  //eu acho que eh assim que chama o ponteiro da funcao,nao tenho certeza
 	makecontext(&(newThread->context),start,1,arg);
 
