@@ -164,7 +164,7 @@ void ScheduleThreads()
             TCBReady->state = PROCST_EXEC;
 
 						CurrentThreadID = TCBReady->tid;
-            swapcontext(TCBCurrent->context, TCBReady->context);
+            swapcontext(&TCBCurrent->context, &TCBReady->context); // usa-se "->" pois TCBCurrent é um *ponteiro* pra uma estrutura, e "&" pois swapcontext requer o *endereço* de um contexto
         }
     }
     else
@@ -172,7 +172,7 @@ void ScheduleThreads()
         TCBReady->state = PROCST_EXEC;
 
         CurrentThreadID = TCBReady->tid;
-        swapcontext(TCBCurrent->context, TCBReady->context);
+        swapcontext(&TCBCurrent->context, &TCBReady->context);
     }
 }
 
@@ -229,8 +229,8 @@ void addNewTCB(TCB_t* fatherThread,int prio,void* (*start)(void*),void *arg){ //
 	newThread->prio = prio;
 
 	getcontext(&(newThread->context));                                 //criacao do novo contexto
-	newThread->context.ss_sp = malloc(sizeof(char)*BYTES_IN_STACK);
-	newThread->context.ss_size = sizeof(char)*BYTES_IN_STACK;
+	newThread->context.uc_stack.ss_sp = malloc(sizeof(char)*BYTES_IN_STACK);
+	newThread->context.uc_stack.ss_size = sizeof(char)*BYTES_IN_STACK;
 	newThread->context.uc_link = &ScheduleThreadsEndOfThread;  //eu acho que eh assim que chama o ponteiro da funcao,nao tenho certeza
 	makecontext(&(newThread->context),start,1,arg);
 
