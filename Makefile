@@ -7,7 +7,7 @@
 # É NECESSARIO ADAPTAR ESSE ARQUIVO de makefile para suas necessidades.
 #  1. Cuidado com a regra "clean" para não apagar o "support.o"
 #
-# OBSERVAR que as variáveis de ambiente consideram que o Makefile está no diretótio "cthread"
+# OBSERVAR que as variáveis de ambiente consideram que o Makefile está no diretório "cthread"
 # 
 
 CC=gcc
@@ -16,18 +16,14 @@ INC_DIR=./include
 BIN_DIR=./bin
 SRC_DIR=./src
 
-all: regra1 regra2 regran
+all: objeto biblioteca
 
-regra1: #dependências para a regra1
-	$(CC) -o $(BIN_DIR)regra1 $(SRC_DIR)regra1.c -Wall
+objeto: $(SRC_DIR)/lib.c
+	$(CC) -c $(SRC_DIR)/lib.c -Wall
+	mv lib.o $(BIN_DIR)/lib.o
 
-regra2: #dependências para a regra2
-	$(CC) -o $(BIN_DIR)regra2 $(SRC_DIR)regra2.c -Wall
-
-regran: #dependências para a regran
-	$(CC) -o $(BIN_DIR)regran $(SRC_DIR)regran.c -Wall
+biblioteca: $(BIN_DIR)/lib.o $(BIN_DIR)/support.o
+	ar crs $(LIB_DIR)/libcthread.a $(BIN_DIR)/lib.o $(BIN_DIR)/support.o
 
 clean:
-	rm -rf $(LIB_DIR)/*.a $(BIN_DIR)/*.o $(SRC_DIR)/*~ $(INC_DIR)/*~ *~
-
-
+	rm -rf $(LIB_DIR)/*.a $(BIN_DIR)/lib.o
