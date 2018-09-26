@@ -27,7 +27,7 @@ typedef struct sMultiLevel {
 MULTILEVEL PriorityQueue;
 int CurrentThreadID;
 
-int isCthreadInitialized =0 ;                //checar se a maind ja ganhou pcb
+int isCthreadInitialized = 0;                //checar se a maind ja ganhou pcb
 int idCounter = -1;                          //para gerar os ids
 int isEndOfThread = 0;                       //avisar para o ESCALONADOR se eh o fim de uma thread ou nao
 
@@ -248,8 +248,8 @@ void addNewTCB(TCB_t* fatherThread,int prio,void* (*start)(void*),void *arg){ //
 }
 
 void initializeCthread(){               //se no futuro mais coisas precisem ser inicializadas para cthread colocar aqui
-	createMainThread();
-	isCthreadInitialed = 1;
+	createMainTCB();
+	isCthreadInitialized = 1;
 	return;
 }
 

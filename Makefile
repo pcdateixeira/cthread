@@ -23,6 +23,7 @@ objeto: $(SRC_DIR)/lib.c
 	mv lib.o $(BIN_DIR)/lib.o
 
 biblioteca: $(BIN_DIR)/lib.o $(BIN_DIR)/support.o
+	mkdir -p $(LIB_DIR)
 	ar crs $(LIB_DIR)/libcthread.a $(BIN_DIR)/lib.o $(BIN_DIR)/support.o
 
 clean:
