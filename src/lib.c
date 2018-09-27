@@ -214,7 +214,7 @@ void createMainTCB(){
 	getcontext(&(mainThread->context));
 
 	tcbExtra_t* mainExtra = malloc(sizeof(tcbExtra_t));  //alocando as variaveis que nos julgaremos uteis para a implementacao;
-	(tcbExtra_t*)mainThread->data = mainExtra;
+	mainThread->data = mainExtra;
 
 	addThreadToQueue(mainThread);
 
@@ -238,7 +238,7 @@ void addNewTCB(TCB_t* fatherThread,int prio,void* (*start)(void*),void *arg){ //
 	makecontext(&(newThread->context),start,1,arg);
 
 	tcbExtra_t* newExtra = malloc(sizeof(tcbExtra_t));              //recursos extras
-	(tcbExtra_t*)newThread->data = newExtra;
+	newThread->data = newExtra;
 
 	addThreadToQueue(newThread);
 
