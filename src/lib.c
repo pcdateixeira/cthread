@@ -31,9 +31,6 @@ int isCthreadInitialized = 0;                //checar se a maind ja ganhou pcb
 int idCounter = -1;                          //para gerar os ids
 int isEndOfThread = 0;                       //avisar para o ESCALONADOR se eh o fim de uma thread ou nao
 
-CreateFila2(&PriorityQueue.high);
-CreateFila2(&PriorityQueue.medium);
-CreateFila2(&PriorityQueue.low);
 
 /*-------------------------------------------------------------------
                             ESCALONADOR
@@ -248,6 +245,11 @@ void addNewTCB(TCB_t* fatherThread,int prio,void* (*start)(void*),void *arg){ //
 }
 
 void initializeCthread(){               //se no futuro mais coisas precisem ser inicializadas para cthread colocar aqui
+
+    // Inicializa as filas de threads
+    CreateFila2(&PriorityQueue.high);
+    CreateFila2(&PriorityQueue.medium);
+    CreateFila2(&PriorityQueue.low);
 	createMainTCB();
 	isCthreadInitialized = 1;
 	return;
