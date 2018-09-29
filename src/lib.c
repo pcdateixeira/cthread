@@ -116,7 +116,7 @@ PFILA2 getNonEmptyQueue(){
 // Retorna ponteiro para um nodo com TCB de estado APTO na fila mais prioritária
 PFILA2 getReadyThread(){
     PFILA2 PQueue = getNonEmptyQueue();
-    TCB_t *tcb = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueue))->node;
+    TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
 
     while(tcb != NULL)
     {
@@ -124,7 +124,7 @@ PFILA2 getReadyThread(){
             return PQueue;
 
         NextFila2(PQueue);
-        tcb = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueue))->node;
+        tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
     }
 
     return NULL;
@@ -133,8 +133,8 @@ PFILA2 getReadyThread(){
 void ScheduleThreads(){
     PFILA2 PQueueCurrent = getRunningThread();
     PFILA2 PQueueReady = getReadyThread();
-    TCB_t *TCBCurrent = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueueCurrent))->node;
-    TCB_t *TCBReady = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueueReady))->node;
+    TCB_t *TCBCurrent = (TCB_t *)GetAtIteratorFila2(PQueueCurrent);
+    TCB_t *TCBReady = (TCB_t *)GetAtIteratorFila2(PQueueReady);
 
 
 		if(isEndOfThread == 1){
@@ -302,7 +302,7 @@ int csetprio(int tid, int prio){
 	PFILA2 filaTemp;
 	PNODE2 nodeTemp;
 
-  filaTemp = findThreadByIDInAllQueues(tid);
+    filaTemp = findThreadByIDInAllQueues(CurrentThreadID);
 
 	if(filaTemp == NULL)
 		return -1;
@@ -314,7 +314,7 @@ int csetprio(int tid, int prio){
 	TCB_t* copyNode;
 	copyTcb(&copyNode,(TCB_t*)nodeTemp->node);
 
-	deleteThreadByID(((TCB_t*)nodeTemp->node)->tid);
+	deleteThreadByID(((TCB_t*)nodeTemp->node)->CurrentThreadID);
 
 	addThreadToQueue(copyNode);
 
