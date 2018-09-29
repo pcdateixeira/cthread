@@ -353,15 +353,80 @@ int cjoin(int tid) {
 }
 
 int csem_init(csem_t *sem, int count) {
-	return -1;
+    if(sem == NULL)
+        return -1;
+
+    if(CreateFila2(sem->fila) != 0)
+        return -1;
+
+    sem->count = count;
+
+    return 0;
 }
 
 int cwait(csem_t *sem) {
-	return -1;
+    PFILA2 PQueueCurrent = getRunningThread();
+
+    if(PQueueCurrent == NULL)
+        return -1;
+
+    if(sem == NULL)
+        return -1;
+
+    TCB_t *TCBCurrent = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueueCurrent))->node;
+
+    if(sem->count <= 0)
+    {
+        TCBCurrent->state = PROCST_BLOQ;
+
+        PNODE2 newNode;
+
+        newNode = (PNODE2)malloc(sizeof(NODE2));
+        newNode->node = (void *)TCBCurrent;
+        newNode->ant = NULL;
+        newNode->next = NULL;
+
+        if(AppendFila2(sem->fila, (void *)newNode) != 0)
+            return -1;
+    }
+
+    sem->count = sem->count - 1;
+
+    return 0;
 }
 
 int csignal(csem_t *sem) {
-	return -1;
+    PFILA2 PQueue;
+    int prio;
+
+    if(sem == NULL)
+        return -1;
+
+    if(FirstFila2(sem->fila) != 0)
+        return -1;
+
+    TCB_t *tcb = (TCB_t *)((PNODE2)GetAtIteratorFila2(sem->fila))->node;
+
+    sem->count = sem->count + 1;
+
+    if(sem->count > 0)
+    {
+        prio = tcb->prio;
+
+        while(tcb != NULL)
+        {
+            if(tcb->prio < prio)
+                PQueue = sem->fila;
+
+            NextFila2(sem->fila);
+            tcb = (TCB_t *)((PNODE2)GetAtIteratorFila2(sem->fila))->node;
+        }
+
+        tcb = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueue))->node;
+        tcb->state = PROCST_APTO;
+    }
+
+    return 0;
 }
 
 int cidentify (char *name, int size) {
