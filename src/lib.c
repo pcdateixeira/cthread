@@ -24,7 +24,7 @@ typedef struct sMultiLevel {
 } MULTILEVEL;
 
 MULTILEVEL PriorityQueue;
-int CurrentThreadID;
+int CurrentThreadID = 0;
 
 int isCthreadInitialized = 0;                //checar se a main ja ganhou tcb
 int idCounter = -1;                          //para gerar os ids
@@ -35,13 +35,9 @@ int isEndOfThread = 0;                       //avisar para o ESCALONADOR se eh o
                             ESCALONADOR
 -------------------------------------------------------------------*/
 
-PFILA2 findThreadByID(PFILA2 PQueue, int id)
-{
+PFILA2 findThreadByID(PFILA2 PQueue, int id){
     FirstFila2(PQueue);
-		//printf("antes de conseguir o tcb PQueue = %p \n",PQueue );
     TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
-
-		//printf("depois de conseguir o tcb\n" );
 
     while(tcb != NULL)
     {
@@ -55,8 +51,7 @@ PFILA2 findThreadByID(PFILA2 PQueue, int id)
     return NULL;
 }
 
-PFILA2 findThreadByIDInAllQueues(int id)
-{
+PFILA2 findThreadByIDInAllQueues(int id){
     PFILA2 PQueueHigh = findThreadByID(&PriorityQueue.high, id);
     PFILA2 PQueueMedium = findThreadByID(&PriorityQueue.medium, id);
     PFILA2 PQueueLow = findThreadByID(&PriorityQueue.low, id);
@@ -74,8 +69,7 @@ PFILA2 findThreadByIDInAllQueues(int id)
 }
 
 // Coloca o TCB em um novo item e coloca-o no final da fila correspondente a sua prioridade
-int addThreadToQueue(TCB_t *tcb)
-{
+int addThreadToQueue(TCB_t *tcb){
     int flag;
     PNODE2 newNode;
 
@@ -96,25 +90,21 @@ int addThreadToQueue(TCB_t *tcb)
     return flag;
 }
 
-PFILA2 getRunningThread()
-{
+PFILA2 getRunningThread(){
     return findThreadByIDInAllQueues(CurrentThreadID);
 }
 
-int deleteThreadByID(int id)
-{
+int deleteThreadByID(int id){
     PFILA2 PQueue = findThreadByIDInAllQueues(id);
     return DeleteAtIteratorFila2(PQueue);
 }
 
-void deleteCurrentThread()
-{
+void deleteCurrentThread(){
     deleteThreadByID(CurrentThreadID);
 }
 
 // Retorna ponteiro para uma fila de prioridade que não estiver vazia com iterador da fila no primeiro item da mesma
-PFILA2 getNonEmptyQueue()
-{
+PFILA2 getNonEmptyQueue(){
     if(FirstFila2(&PriorityQueue.high) == 0)
         return &PriorityQueue.high;
     else if(FirstFila2(&PriorityQueue.medium) == 0)
@@ -126,8 +116,7 @@ PFILA2 getNonEmptyQueue()
 }
 
 // Retorna ponteiro para um nodo com TCB de estado APTO na fila mais prioritária
-PFILA2 getReadyThread()
-{
+PFILA2 getReadyThread(){
     PFILA2 PQueue = getNonEmptyQueue();
     TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
 
@@ -143,8 +132,7 @@ PFILA2 getReadyThread()
     return NULL;
 }
 
-void ScheduleThreads()
-{
+void ScheduleThreads(){
     PFILA2 PQueueCurrent = getRunningThread();
     PFILA2 PQueueReady = getReadyThread();
     TCB_t *TCBCurrent = (TCB_t *)GetAtIteratorFila2(PQueueCurrent);
@@ -229,7 +217,7 @@ void addNewTCB(TCB_t* fatherThread,int prio,void* (*start)(void*),void *arg){ //
 
 
 	TCB_t* newThread;
-	ucontext_t* tempContext=malloc(sizeof(ucontext_t*));
+	ucontext_t* tempContext= NULL;
 	newThread = malloc(sizeof(TCB_t));
 	newThread->tid = getNewThreadId();
 	newThread->state = PROCST_APTO;
@@ -241,7 +229,7 @@ void addNewTCB(TCB_t* fatherThread,int prio,void* (*start)(void*),void *arg){ //
 
 	makecontext(tempContext,ScheduleThreadsEndOfThread,0);
 	newThread->context.uc_link = tempContext;
-	makecontext(&(newThread->context),start(arg),1,arg);//makecontext necessita de um void(*)(void),start eh do tipo void*(start)(void*),tenho certeza de que tem algo errado aqui
+	makecontext(&(newThread->context),(void(*)(void))start,1,arg);//makecontext necessita de um void(*)(void),start eh do tipo void*(start)(void*),tenho certeza de que tem algo errado aqui
 
 	tcbExtra_t* newExtra = malloc(sizeof(tcbExtra_t));              //recursos extras
 	newThread->data = newExtra;
@@ -297,7 +285,7 @@ void copyTcb(TCB_t** destination,TCB_t* source){
 														funcoes suporte-fim (lembrar de colocar um nome melhor para essas funcoes)
 ---------------------------------------------------------------------*/
 
-int ccreate (void* (*start)(void*), void *arg, int prio) {
+int ccreate (void* (*start)(void*), void *arg, int prio){
 
 
 	TCB_t* currentTCB;
@@ -322,15 +310,13 @@ int ccreate (void* (*start)(void*), void *arg, int prio) {
 
 }
 
-
-
-int csetprio(int tid, int prio) {
+int csetprio(int tid, int prio){
 
 	PFILA2 filaTemp;
 	//PNODE2 nodeTemp;
 	TCB_t* tcbAtual;
 
-  filaTemp = findThreadByIDInAllQueues(tid);
+	filaTemp = getRunningThread();
 
 	if(filaTemp == NULL)
 		return -1;
@@ -351,7 +337,7 @@ int csetprio(int tid, int prio) {
 	return 0;
 }
 
-int cyield(void) {
+int cyield(void){
 
 	TCB_t* currentTCB;
 
@@ -365,23 +351,88 @@ int cyield(void) {
 	return 0;
 }
 
-int cjoin(int tid) {
+int cjoin(int tid){
 	return -1;
 }
 
-int csem_init(csem_t *sem, int count) {
-	return -1;
+int csem_init(csem_t *sem, int count){
+    if(sem == NULL)
+        return -1;
+
+    if(CreateFila2(sem->fila) != 0)
+        return -1;
+
+    sem->count = count;
+
+    return 0;
 }
 
-int cwait(csem_t *sem) {
-	return -1;
+int cwait(csem_t *sem){
+    PFILA2 PQueueCurrent = getRunningThread();
+
+    if(PQueueCurrent == NULL)
+        return -1;
+
+    if(sem == NULL)
+        return -1;
+
+    TCB_t *TCBCurrent = (TCB_t *)GetAtIteratorFila2(PQueueCurrent);
+
+    if(sem->count <= 0)
+    {
+        TCBCurrent->state = PROCST_BLOQ;
+
+        PNODE2 newNode;
+
+        newNode = (PNODE2)malloc(sizeof(NODE2));
+        newNode->node = (void *)TCBCurrent;
+        newNode->ant = NULL;
+        newNode->next = NULL;
+
+        if(AppendFila2(sem->fila, (void *)newNode) != 0)
+            return -1;
+    }
+
+    sem->count = sem->count - 1;
+
+    return 0;
 }
 
-int csignal(csem_t *sem) {
-	return -1;
+int csignal(csem_t *sem){
+    PFILA2 PQueue;
+    int prio;
+
+    if(sem == NULL)
+        return -1;
+
+    if(FirstFila2(sem->fila) != 0)
+        return -1;
+
+    TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(sem->fila);
+
+    sem->count = sem->count + 1;
+
+    if(sem->count > 0)
+    {
+        prio = tcb->prio;
+
+        while(tcb != NULL)
+        {
+            if(tcb->prio < prio)
+                PQueue = sem->fila;
+
+            NextFila2(sem->fila);
+            tcb = (TCB_t *)GetAtIteratorFila2(sem->fila);
+        }
+
+        tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
+        tcb->state = PROCST_APTO;
+    }
+
+    return 0;
 }
 
-int cidentify (char *name, int size) {
+int cidentify (char *name, int size){
 	strncpy (name, "Humberto Lentz - 242308\nMakoto Ishikawa - 216728\nPedro Teixeira - 228509", size);
 	return 0;
 }
