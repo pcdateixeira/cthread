@@ -316,7 +316,11 @@ int csetprio(int tid, int prio){
 	//PNODE2 nodeTemp;
 	TCB_t* tcbAtual;
 
+<<<<<<< HEAD
 	filaTemp = getRunningThread();
+=======
+    filaTemp = findThreadByIDInAllQueues(CurrentThreadID);
+>>>>>>> e191e63a54ff34d2899bd92b35c0e4bbd17f91d9
 
 	if(filaTemp == NULL)
 		return -1;
@@ -328,7 +332,11 @@ int csetprio(int tid, int prio){
 	TCB_t* copyNode;
 	copyTcb(&copyNode,tcbAtual);
 
+<<<<<<< HEAD
 	deleteThreadByID(tcbAtual->tid);
+=======
+	deleteThreadByID(((TCB_t*)nodeTemp->node)->CurrentThreadID);
+>>>>>>> e191e63a54ff34d2899bd92b35c0e4bbd17f91d9
 
 	addThreadToQueue(copyNode);
 
@@ -419,7 +427,10 @@ int csignal(csem_t *sem){
         while(tcb != NULL)
         {
             if(tcb->prio < prio)
+            {
+                prio = tcb->prio;
                 PQueue = sem->fila;
+            }
 
             NextFila2(sem->fila);
             tcb = (TCB_t *)GetAtIteratorFila2(sem->fila);
