@@ -11,6 +11,8 @@
 #define MEDIUM_PRIORITY 1
 #define HIGH_PRIORITY 0
 
+#define BYTES_IN_STACK 8388608         //deixando assim mesmo porque o compilador n'ao esta reconhecendo SIGSTKS
+
 typedef struct tcbExtra{ //relacionado a variavel data do tcb,coloquem aqui as variaveis que voces precisarem usar no tcb que nao foi definido pelos professores
 	//  ;
 }tcbExtra_t;
@@ -71,7 +73,7 @@ int addThreadToQueue(TCB_t *tcb)
 {
     int flag;
     PNODE2 newNode;
-    
+
     newNode = malloc(sizeof(NODE2));
     newNode->node = (void *)tcb;
     newNode->ant = NULL;
@@ -222,17 +224,19 @@ void addNewTCB(TCB_t* fatherThread,int prio,void* (*start)(void*),void *arg){ //
 
 
 	TCB_t* newThread;
-
+	ucontext_t* tempContext=malloc(sizeof(ucontext_t*));
 	newThread = malloc(sizeof(TCB_t));
 	newThread->tid = getNewThreadId();
 	newThread->state = PROCST_APTO;
 	newThread->prio = prio;
 
 	getcontext(&(newThread->context));                                 //criacao do novo contexto
-	newThread->context.uc_stack.ss_sp = malloc(sizeof(char)*SIGSTKSZ);
-	newThread->context.uc_stack.ss_size = sizeof(char)*SIGSTKSZ;
-	newThread->context.uc_link = &ScheduleThreadsEndOfThread;  //eu acho que eh assim que chama o ponteiro da funcao,nao tenho certeza
-	makecontext(&(newThread->context),start,1,arg);
+	newThread->context.uc_stack.ss_sp = malloc(sizeof(char)*BYTES_IN_STACK);
+	newThread->context.uc_stack.ss_size = sizeof(char)*BYTES_IN_STACK;
+
+	makecontext(tempContext,ScheduleThreadsEndOfThread,0);
+	newThread->context.uc_link = tempContext;
+	makecontext(&(newThread->context),start(arg),0);//makecontext necessita de um void(*)(void),start eh do tipo void*(start)(void*),tenho certeza de que tem algo errado aqui
 
 	tcbExtra_t* newExtra = malloc(sizeof(tcbExtra_t));              //recursos extras
 	newThread->data = newExtra;
@@ -266,6 +270,17 @@ int getCurrentThread(TCB_t** currentTCB){   //retorna 0 para sucesso -1 caso con
 	return 0;
 }
 
+void copyTcb(TCB_t** destination,TCB_t* source){
+
+	*destination = malloc(sizeof(TCB_t));
+	(*destination)->tid = source->tid;
+	(*destination)->state = source->state;
+	(*destination)->prio = source->prio;
+	(*destination)->context = source->context;
+	(*destination)->data = source->data;
+
+}
+
 
 /*-------------------------------------------------------------------
 														funcoes suporte-fim (lembrar de colocar um nome melhor para essas funcoes)
@@ -291,12 +306,14 @@ int ccreate (void* (*start)(void*), void *arg, int prio) {
 
 }
 
+
+
 int csetprio(int tid, int prio) {
 
 	PFILA2 filaTemp;
 	PNODE2 nodeTemp;
 
-    filaTemp = findThreadByIDInAllQueues(tid);
+  filaTemp = findThreadByIDInAllQueues(tid);
 
 	if(filaTemp == NULL)
 		return -1;
@@ -304,6 +321,13 @@ int csetprio(int tid, int prio) {
 	nodeTemp=(PNODE2)GetAtIteratorFila2(filaTemp);
 
 	((TCB_t*)nodeTemp->node)->prio=prio;
+
+	TCB_t* copyNode;
+	copyTcb(&copyNode,(TCB_t*)nodeTemp->node);
+
+	deleteThreadByID(((TCB_t*)nodeTemp->node)->tid);
+
+	addThreadToQueue(copyNode);
 
 	ScheduleThreadsPreemptive();
 
