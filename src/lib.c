@@ -405,7 +405,10 @@ int csignal(csem_t *sem){
         while(tcb != NULL)
         {
             if(tcb->prio < prio)
+            {
+                prio = tcb->prio;
                 PQueue = sem->fila;
+            }
 
             NextFila2(sem->fila);
             tcb = (TCB_t *)((PNODE2)GetAtIteratorFila2(sem->fila))->node;
