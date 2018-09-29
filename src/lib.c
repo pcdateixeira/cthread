@@ -24,7 +24,7 @@ typedef struct sMultiLevel {
 } MULTILEVEL;
 
 MULTILEVEL PriorityQueue;
-int CurrentThreadID;
+int CurrentThreadID = 0;
 
 int isCthreadInitialized = 0;                //checar se a main ja ganhou tcb
 int idCounter = -1;                          //para gerar os ids
@@ -35,10 +35,9 @@ int isEndOfThread = 0;                       //avisar para o ESCALONADOR se eh o
                             ESCALONADOR
 -------------------------------------------------------------------*/
 
-PFILA2 findThreadByID(PFILA2 PQueue, int id)
-{
+PFILA2 findThreadByID(PFILA2 PQueue, int id){
     FirstFila2(PQueue);
-    TCB_t *tcb = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueue))->node;
+    TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
 
     while(tcb != NULL)
     {
@@ -46,14 +45,13 @@ PFILA2 findThreadByID(PFILA2 PQueue, int id)
             return PQueue;
 
         NextFila2(PQueue);
-        tcb = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueue))->node;
+        tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
     }
 
     return NULL;
 }
 
-PFILA2 findThreadByIDInAllQueues(int id)
-{
+PFILA2 findThreadByIDInAllQueues(int id){
     PFILA2 PQueueHigh = findThreadByID(&PriorityQueue.high, id);
     PFILA2 PQueueMedium = findThreadByID(&PriorityQueue.medium, id);
     PFILA2 PQueueLow = findThreadByID(&PriorityQueue.low, id);
@@ -69,8 +67,7 @@ PFILA2 findThreadByIDInAllQueues(int id)
 }
 
 // Coloca o TCB em um novo item e coloca-o no final da fila correspondente a sua prioridade
-int addThreadToQueue(TCB_t *tcb)
-{
+int addThreadToQueue(TCB_t *tcb){
     int flag;
     PNODE2 newNode;
 
@@ -91,25 +88,21 @@ int addThreadToQueue(TCB_t *tcb)
     return flag;
 }
 
-PFILA2 getRunningThread()
-{
+PFILA2 getRunningThread(){
     return findThreadByIDInAllQueues(CurrentThreadID);
 }
 
-int deleteThreadByID(int id)
-{
+int deleteThreadByID(int id){
     PFILA2 PQueue = findThreadByIDInAllQueues(id);
     return DeleteAtIteratorFila2(PQueue);
 }
 
-void deleteCurrentThread()
-{
+void deleteCurrentThread(){
     deleteThreadByID(CurrentThreadID);
 }
 
 // Retorna ponteiro para uma fila de prioridade que não estiver vazia com iterador da fila no primeiro item da mesma
-PFILA2 getNonEmptyQueue()
-{
+PFILA2 getNonEmptyQueue(){
     if(FirstFila2(&PriorityQueue.high) == 0)
         return &PriorityQueue.high;
     else if(FirstFila2(&PriorityQueue.medium) == 0)
@@ -121,8 +114,7 @@ PFILA2 getNonEmptyQueue()
 }
 
 // Retorna ponteiro para um nodo com TCB de estado APTO na fila mais prioritária
-PFILA2 getReadyThread()
-{
+PFILA2 getReadyThread(){
     PFILA2 PQueue = getNonEmptyQueue();
     TCB_t *tcb = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueue))->node;
 
@@ -138,8 +130,7 @@ PFILA2 getReadyThread()
     return NULL;
 }
 
-void ScheduleThreads()
-{
+void ScheduleThreads(){
     PFILA2 PQueueCurrent = getRunningThread();
     PFILA2 PQueueReady = getReadyThread();
     TCB_t *TCBCurrent = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueueCurrent))->node;
@@ -260,6 +251,7 @@ void initializeCthread(){               //se no futuro mais coisas precisem ser 
 int getCurrentThread(TCB_t** currentTCB){   //retorna 0 para sucesso -1 caso contrario
 	PFILA2 filaTemp;
 
+
 	filaTemp=getRunningThread();
 
 	if(filaTemp==NULL)
@@ -286,11 +278,10 @@ void copyTcb(TCB_t** destination,TCB_t* source){
 														funcoes suporte-fim (lembrar de colocar um nome melhor para essas funcoes)
 ---------------------------------------------------------------------*/
 
-int ccreate (void* (*start)(void*), void *arg, int prio) {
+int ccreate (void* (*start)(void*), void *arg, int prio){
 
 
 	TCB_t* currentTCB;
-
 
 	if(!isCthreadInitialized){
 		initializeCthread();
@@ -306,9 +297,7 @@ int ccreate (void* (*start)(void*), void *arg, int prio) {
 
 }
 
-
-
-int csetprio(int tid, int prio) {
+int csetprio(int tid, int prio){
 
 	PFILA2 filaTemp;
 	PNODE2 nodeTemp;
@@ -334,7 +323,7 @@ int csetprio(int tid, int prio) {
 	return 0;
 }
 
-int cyield(void) {
+int cyield(void){
 
 	TCB_t* currentTCB;
 
@@ -348,11 +337,11 @@ int cyield(void) {
 	return 0;
 }
 
-int cjoin(int tid) {
+int cjoin(int tid){
 	return -1;
 }
 
-int csem_init(csem_t *sem, int count) {
+int csem_init(csem_t *sem, int count){
     if(sem == NULL)
         return -1;
 
@@ -364,7 +353,7 @@ int csem_init(csem_t *sem, int count) {
     return 0;
 }
 
-int cwait(csem_t *sem) {
+int cwait(csem_t *sem){
     PFILA2 PQueueCurrent = getRunningThread();
 
     if(PQueueCurrent == NULL)
@@ -395,7 +384,7 @@ int cwait(csem_t *sem) {
     return 0;
 }
 
-int csignal(csem_t *sem) {
+int csignal(csem_t *sem){
     PFILA2 PQueue;
     int prio;
 
@@ -429,7 +418,7 @@ int csignal(csem_t *sem) {
     return 0;
 }
 
-int cidentify (char *name, int size) {
+int cidentify (char *name, int size){
 	strncpy (name, "Humberto Lentz - 242308\nMakoto Ishikawa - 216728\nPedro Teixeira - 228509", size);
 	return 0;
 }
