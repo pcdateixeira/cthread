@@ -38,7 +38,10 @@ int isEndOfThread = 0;                       //avisar para o ESCALONADOR se eh o
 PFILA2 findThreadByID(PFILA2 PQueue, int id)
 {
     FirstFila2(PQueue);
-    TCB_t *tcb = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueue))->node;
+		//printf("antes de conseguir o tcb PQueue = %p \n",PQueue );
+    TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
+
+		//printf("depois de conseguir o tcb\n" );
 
     while(tcb != NULL)
     {
@@ -46,7 +49,7 @@ PFILA2 findThreadByID(PFILA2 PQueue, int id)
             return PQueue;
 
         NextFila2(PQueue);
-        tcb = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueue))->node;
+        tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
     }
 
     return NULL;
@@ -57,6 +60,8 @@ PFILA2 findThreadByIDInAllQueues(int id)
     PFILA2 PQueueHigh = findThreadByID(&PriorityQueue.high, id);
     PFILA2 PQueueMedium = findThreadByID(&PriorityQueue.medium, id);
     PFILA2 PQueueLow = findThreadByID(&PriorityQueue.low, id);
+
+		//printf("dentro de findThreadByIDInAllQueues\n" );
 
     if(PQueueHigh != NULL)
         return PQueueHigh;
@@ -124,7 +129,7 @@ PFILA2 getNonEmptyQueue()
 PFILA2 getReadyThread()
 {
     PFILA2 PQueue = getNonEmptyQueue();
-    TCB_t *tcb = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueue))->node;
+    TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
 
     while(tcb != NULL)
     {
@@ -132,7 +137,7 @@ PFILA2 getReadyThread()
             return PQueue;
 
         NextFila2(PQueue);
-        tcb = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueue))->node;
+        tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
     }
 
     return NULL;
@@ -142,8 +147,8 @@ void ScheduleThreads()
 {
     PFILA2 PQueueCurrent = getRunningThread();
     PFILA2 PQueueReady = getReadyThread();
-    TCB_t *TCBCurrent = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueueCurrent))->node;
-    TCB_t *TCBReady = (TCB_t *)((PNODE2)GetAtIteratorFila2(PQueueReady))->node;
+    TCB_t *TCBCurrent = (TCB_t *)GetAtIteratorFila2(PQueueCurrent);
+    TCB_t *TCBReady = (TCB_t *)GetAtIteratorFila2(PQueueReady);
 
 
 		if(isEndOfThread == 1){
@@ -236,7 +241,7 @@ void addNewTCB(TCB_t* fatherThread,int prio,void* (*start)(void*),void *arg){ //
 
 	makecontext(tempContext,ScheduleThreadsEndOfThread,0);
 	newThread->context.uc_link = tempContext;
-	makecontext(&(newThread->context),start(arg),0);//makecontext necessita de um void(*)(void),start eh do tipo void*(start)(void*),tenho certeza de que tem algo errado aqui
+	makecontext(&(newThread->context),start(arg),1,arg);//makecontext necessita de um void(*)(void),start eh do tipo void*(start)(void*),tenho certeza de que tem algo errado aqui
 
 	tcbExtra_t* newExtra = malloc(sizeof(tcbExtra_t));              //recursos extras
 	newThread->data = newExtra;
@@ -248,10 +253,12 @@ void addNewTCB(TCB_t* fatherThread,int prio,void* (*start)(void*),void *arg){ //
 void initializeCthread(){               //se no futuro mais coisas precisem ser inicializadas para cthread colocar aqui
 
     // Inicializa as filas de threads
-    CreateFila2(&PriorityQueue.high);
-    CreateFila2(&PriorityQueue.medium);
-    CreateFila2(&PriorityQueue.low);
+  CreateFila2(&(PriorityQueue.high));
+  CreateFila2(&(PriorityQueue.medium));
+  CreateFila2(&(PriorityQueue.low));
+
 	createMainTCB();
+	CurrentThreadID = 0;
 	isCthreadInitialized = 1;
 	return;
 }
@@ -260,12 +267,16 @@ void initializeCthread(){               //se no futuro mais coisas precisem ser 
 int getCurrentThread(TCB_t** currentTCB){   //retorna 0 para sucesso -1 caso contrario
 	PFILA2 filaTemp;
 
+	//printf("antes de getRunningThread\n" );
+
 	filaTemp=getRunningThread();
 
 	if(filaTemp==NULL)
 		return -1;
 
-	*currentTCB=(TCB_t*)((PNODE2)GetAtIteratorFila2(filaTemp))->node;
+	//printf("conseguiu pegar a thread\n" );
+
+	*currentTCB=(TCB_t*)GetAtIteratorFila2(filaTemp);
 
 	return 0;
 }
@@ -291,14 +302,19 @@ int ccreate (void* (*start)(void*), void *arg, int prio) {
 
 	TCB_t* currentTCB;
 
-
+	//printf("antesde inicializar\n" );
 	if(!isCthreadInitialized){
 		initializeCthread();
-	}
 
+	}
+	//printf("depois de inicializar\n" );
 	if(getCurrentThread(&currentTCB)<0) return -1;
 
+	//printf("depois de pegar a thread" );
+
 	addNewTCB(currentTCB,prio,start,arg);
+
+	//printf("depois de adicionar tcb\n" );
 
 	ScheduleThreadsPreemptive();
 
@@ -311,21 +327,22 @@ int ccreate (void* (*start)(void*), void *arg, int prio) {
 int csetprio(int tid, int prio) {
 
 	PFILA2 filaTemp;
-	PNODE2 nodeTemp;
+	//PNODE2 nodeTemp;
+	TCB_t* tcbAtual;
 
   filaTemp = findThreadByIDInAllQueues(tid);
 
 	if(filaTemp == NULL)
 		return -1;
 
-	nodeTemp=(PNODE2)GetAtIteratorFila2(filaTemp);
+	tcbAtual=GetAtIteratorFila2(filaTemp);
 
-	((TCB_t*)nodeTemp->node)->prio=prio;
+	tcbAtual->prio=prio;
 
 	TCB_t* copyNode;
-	copyTcb(&copyNode,(TCB_t*)nodeTemp->node);
+	copyTcb(&copyNode,tcbAtual);
 
-	deleteThreadByID(((TCB_t*)nodeTemp->node)->tid);
+	deleteThreadByID(tcbAtual->tid);
 
 	addThreadToQueue(copyNode);
 
