@@ -11,9 +11,6 @@
 #define MEDIUM_PRIORITY 1
 #define HIGH_PRIORITY 0
 
-#define BYTES_IN_STACK 8388608        //considerando sizeof(char) == 1 byte,nao achei o nome da constante de default_stack_size da ucontext_t,entao criei essa
-																																						//O tamanho eh 8MB,que eh mais do que o suficiente
-
 typedef struct tcbExtra{ //relacionado a variavel data do tcb,coloquem aqui as variaveis que voces precisarem usar no tcb que nao foi definido pelos professores
 	//  ;
 }tcbExtra_t;
@@ -27,7 +24,7 @@ typedef struct sMultiLevel {
 MULTILEVEL PriorityQueue;
 int CurrentThreadID;
 
-int isCthreadInitialized = 0;                //checar se a maind ja ganhou pcb
+int isCthreadInitialized = 0;                //checar se a main ja ganhou tcb
 int idCounter = -1;                          //para gerar os ids
 int isEndOfThread = 0;                       //avisar para o ESCALONADOR se eh o fim de uma thread ou nao
 
@@ -232,8 +229,8 @@ void addNewTCB(TCB_t* fatherThread,int prio,void* (*start)(void*),void *arg){ //
 	newThread->prio = prio;
 
 	getcontext(&(newThread->context));                                 //criacao do novo contexto
-	newThread->context.uc_stack.ss_sp = malloc(sizeof(char)*BYTES_IN_STACK);
-	newThread->context.uc_stack.ss_size = sizeof(char)*BYTES_IN_STACK;
+	newThread->context.uc_stack.ss_sp = malloc(sizeof(char)*SIGSTKSZ);
+	newThread->context.uc_stack.ss_size = sizeof(char)*SIGSTKSZ;
 	newThread->context.uc_link = &ScheduleThreadsEndOfThread;  //eu acho que eh assim que chama o ponteiro da funcao,nao tenho certeza
 	makecontext(&(newThread->context),start,1,arg);
 
@@ -299,7 +296,9 @@ int csetprio(int tid, int prio) {
 	PFILA2 filaTemp;
 	PNODE2 nodeTemp;
 
-	if(findThreadByID(filaTemp,tid)==NULL)
+    filaTemp = findThreadByIDInAllQueues(tid);
+
+	if(filaTemp == NULL)
 		return -1;
 
 	nodeTemp=(PNODE2)GetAtIteratorFila2(filaTemp);
