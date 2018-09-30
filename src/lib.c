@@ -309,7 +309,7 @@ ucontext_t *makeLinkContext(void (*start)(void)){
     return context;
 }
 
-ucontext_t *makeThreadContext(void (*start)(void), ucontext_t *linkContext, void *start, void *arg){
+ucontext_t *makeThreadContext(void (*func)(void), ucontext_t *linkContext, void *start, void *arg){
     ucontext_t *context = (ucontext_t *)malloc(sizeof(ucontext_t));
 
     getcontext(context);
@@ -318,7 +318,7 @@ ucontext_t *makeThreadContext(void (*start)(void), ucontext_t *linkContext, void
     context->uc_stack.ss_size = sizeof(char)*BYTES_IN_STACK;
     context->uc_link = linkContext;
 
-    makecontext(context, start, 2, start, arg);
+    makecontext(context, func, 2, start, arg);
 
     return context;
 }
