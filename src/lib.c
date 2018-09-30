@@ -292,33 +292,33 @@ void exitThread(){
 
 void startThread(void *(*start)(void *), void *arg){
     // Executa função mas não precisa salvar retorno na estrutura do TCB
-    void *value = start((void *)arg);
+    start((void *)arg);
 }
 
-ucontext_t *makeLinkContext(void (*start)(void)){
-    ucontext_t *context = (ucontext_t *)malloc(sizeof(ucontext_t));
+ucontext_t makeLinkContext(void (*start)(void)){
+    ucontext_t context;
 
-    getcontext(context);
+    getcontext(&context);
 
-    context->uc_stack.ss_sp = (char *)malloc(sizeof(char)*BYTES_IN_STACK);
-    context->uc_stack.ss_size = sizeof(char)*BYTES_IN_STACK;
-    context->uc_link = NULL;
+    context.uc_stack.ss_sp = (char *)malloc(sizeof(char)*BYTES_IN_STACK);
+    context.uc_stack.ss_size = sizeof(char)*BYTES_IN_STACK;
+    context.uc_link = NULL;
 
-    makecontext(context, start, 0);
+    makecontext(&context, start, 0);
 
     return context;
 }
 
-ucontext_t *makeThreadContext(void (*func)(void), ucontext_t *linkContext, void *start, void *arg){
-    ucontext_t *context = (ucontext_t *)malloc(sizeof(ucontext_t));
+ucontext_t makeThreadContext(void (*func)(void), ucontext_t *linkContext, void *start, void *arg){
+    ucontext_t context;
 
-    getcontext(context);
+    getcontext(&context);
 
-    context->uc_stack.ss_sp = (char *)malloc(sizeof(char)*BYTES_IN_STACK);
-    context->uc_stack.ss_size = sizeof(char)*BYTES_IN_STACK;
-    context->uc_link = linkContext;
+    context.uc_stack.ss_sp = (char *)malloc(sizeof(char)*BYTES_IN_STACK);
+    context.uc_stack.ss_size = sizeof(char)*BYTES_IN_STACK;
+    context.uc_link = linkContext;
 
-    makecontext(context, func, 2, start, arg);
+    makecontext(&context, func, 2, start, arg);
 
     return context;
 }
@@ -333,20 +333,20 @@ int ccreate (void* (*start)(void*), void *arg, int prio){
     if(prio > LOW_PRIORITY || prio < HIGH_PRIORITY)
         return -1;
 
-    if(isCthreadInitialized == 0)
+    if(isInitialized == 0)
 	initializeCthread();
 
-    ucontext_t *linkContext = makeLinkContext(exitThread);
+    ucontext_t linkContext = makeLinkContext(exitThread);
 
     // Quando contexto termina, irá mudar para o contexto apontado no uc_link
     // Contexto link garante que estado passe para terminado com função exitThread() (e não precisa recuperar qualquer retorno)
-    ucontext_t *threadContext = makeThreadContext(startThread, linkContext, start, arg);
+    ucontext_t threadContext = makeThreadContext(startThread, &linkContext, start, arg);
 
     TCB_t *tcb = (TCB_t *)malloc(sizeof(TCB_t));
     tcb->prio = prio;
     tcb->tid = getNewThreadId();
     tcb->state = PROCST_APTO;
-    tcb->context = *threadContext;
+    tcb->context = threadContext;
 
     tcbExtra_t *mainExtra = (tcbExtra_t *)malloc(sizeof(tcbExtra_t));
     tcb->data = (void *)mainExtra;
