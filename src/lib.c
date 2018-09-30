@@ -333,7 +333,7 @@ int ccreate (void* (*start)(void*), void *arg, int prio){
     if(prio > LOW_PRIORITY || prio < HIGH_PRIORITY)
         return -1;
 
-    if(isInitialized == 0)
+    if(isCthreadInitialized == 0)
 	initializeCthread();
 
     ucontext_t linkContext = makeLinkContext(exitThread);
