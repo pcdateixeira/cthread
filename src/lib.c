@@ -14,7 +14,7 @@
 
 // Relacionado a variável data do tcb
 typedef struct tcbExtra{
-    //
+    TCB_t *join;
 } tcbExtra_t;
 
 typedef struct sMultiLevel{
@@ -185,7 +185,7 @@ void initializeMainTCB(){
 	TCBMain->prio = LOW_PRIORITY;
 
 	tcbExtra_t *mainExtra = (tcbExtra_t *)malloc(sizeof(tcbExtra_t));
-	//mainExtra->join = NULL;
+	mainExtra->join = NULL;
 	TCBMain->data = (void *)mainExtra;
 
 	addThreadToQueue(TCBMain);
@@ -210,6 +210,10 @@ void exitThread(){
     TCB_t *TCBCurrent = getRunningThread();
 
     TCBCurrent->state = PROCST_TERMINO;
+
+    // Se a thread terminou e estava sendo esperada por uma outra thread, desbloqueia essa thread
+    if(((tcbExtra_t *)(TCBCurrent->data))->join != NULL && ((tcbExtra_t *)(TCBCurrent->data))->join->state == PROCST_BLOQ)
+        ((tcbExtra_t *)(TCBCurrent->data))->join->state = PROCST_APTO;
 
     ScheduleThreads();
 }
@@ -269,7 +273,8 @@ int ccreate (void *(*start)(void *), void *arg, int prio){
     tcb->context = *threadContext;
 
     tcbExtra_t *mainExtra = (tcbExtra_t *)malloc(sizeof(tcbExtra_t));
-    tcb->data = (void *)mainExtra;
+    mainExtra->join = NULL;
+	tcb->data = (void *)mainExtra;
 
     addThreadToQueue(tcb);
     printf("THREAD ID: %d FOI ADICIONADA!\n", tcb->tid);
@@ -315,32 +320,29 @@ int cyield(void){
 
 // Thread atual é bloqueada até que thread com ID == tid chame a exitThread()
 int cjoin(int tid){
-    /*// Uma determinada thread só pode ser esperada por uma única outra thread
+    // Uma determinada thread só pode ser esperada por uma única outra thread
     // Se duas ou mais threads fizerem cjoin para uma mesma thread, apenas a primeira que realizou a chamada será bloqueada
-    PFILA2 PQueue = findThreadByIDInAllQueues(tid);
-    TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
-    PFILA2 PQueueCurrent = getRunningThread();
-    TCB_t *TCBCurrent = (TCB_t *)GetAtIteratorFila2(PQueueCurrent);
+    TCB_t *tcb = findThreadByIDInAllQueues(tid);
+    TCB_t *TCBCurrent = getRunningThread();
 
-    if(tcb != NULL)
+    if(tcb != NULL && TCBCurrent != NULL && ((tcbExtra_t *)(tcb->data))->join == NULL)
     {
-        //tcb->(tcbExtra_t *)data->jointid = TCBCurrent->tid;
-        //TCBCurrent->(tcbExtra_t *)data->join = tcb;
+        ((tcbExtra_t *)(tcb->data))->join = TCBCurrent;
 
         if(tcb->state != PROCST_TERMINO)
         {
             TCBCurrent->state = PROCST_BLOQ;
+
             ScheduleThreads();
         }
     }
     else
     {
-        // Não existe ou já terminou
+        // Já foi bloqueada antes, não existe ou já terminou
         return -1;
     }
 
-	return 0;*/
-	return -1;
+	return 0;
 }
 
 int csem_init(csem_t *sem, int count){
