@@ -6,43 +6,47 @@
 #include "../include/cthread.h"
 #include "../include/cdata.h"
 
-
 #define LOW_PRIORITY 2
 #define MEDIUM_PRIORITY 1
 #define HIGH_PRIORITY 0
 
-#define BYTES_IN_STACK 8388608         //deixando assim mesmo porque o compilador n'ao esta reconhecendo SIGSTKS
+#define BYTES_IN_STACK 8192
 
-typedef struct tcbExtra{ //relacionado a variavel data do tcb,coloquem aqui as variaveis que voces precisarem usar no tcb que nao foi definido pelos professores
-	//  ;
-}tcbExtra_t;
+// Relacionado a variável data do tcb
+typedef struct tcbExtra{
+    //
+} tcbExtra_t;
 
-typedef struct sMultiLevel {
-	struct sFila2 high;
-	struct sFila2 medium;
-	struct sFila2 low;
+typedef struct sMultiLevel{
+	FILA2 high;
+	FILA2 medium;
+	FILA2 low;
 } MULTILEVEL;
 
 MULTILEVEL PriorityQueue;
+
 int CurrentThreadID = 0;
-
-int isCthreadInitialized = 0;                //checar se a main ja ganhou tcb
-int idCounter = -1;                          //para gerar os ids
-int isEndOfThread = 0;                       //avisar para o ESCALONADOR se eh o fim de uma thread ou nao
-
+int isInitialized = 0;
+int idCounter = 0;
 
 /*-------------------------------------------------------------------
                             ESCALONADOR
 -------------------------------------------------------------------*/
 
-PFILA2 findThreadByID(PFILA2 PQueue, int id){
+int getNewThreadID(){
+	idCounter++;
+
+	return idCounter;
+}
+
+TCB_t *findThreadByID(PFILA2 PQueue, int id){
     FirstFila2(PQueue);
     TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
 
     while(tcb != NULL)
     {
         if(tcb->tid == id)
-            return PQueue;
+            return tcb;
 
         NextFila2(PQueue);
         tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
@@ -51,47 +55,76 @@ PFILA2 findThreadByID(PFILA2 PQueue, int id){
     return NULL;
 }
 
-PFILA2 findThreadByIDInAllQueues(int id){
-    PFILA2 PQueueHigh = findThreadByID(&PriorityQueue.high, id);
-    PFILA2 PQueueMedium = findThreadByID(&PriorityQueue.medium, id);
-    PFILA2 PQueueLow = findThreadByID(&PriorityQueue.low, id);
+TCB_t *findThreadByState(PFILA2 PQueue, int state){
+    FirstFila2(PQueue);
+    TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
 
-		//printf("dentro de findThreadByIDInAllQueues\n" );
+    while(tcb != NULL)
+    {
+        if(tcb->state == state)
+            return tcb;
 
-    if(PQueueHigh != NULL)
-        return PQueueHigh;
-    else if(PQueueMedium != NULL)
-        return PQueueMedium;
-    else if(PQueueLow != NULL)
-        return PQueueLow;
-    else
-        return NULL;
+        NextFila2(PQueue);
+        tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
+    }
+
+    return NULL;
+}
+
+TCB_t *findThreadByIDInAllQueues(int id){
+    TCB_t *TCBHigh = findThreadByID(&(PriorityQueue.high), id);
+    TCB_t *TCBMedium = findThreadByID(&(PriorityQueue.medium), id);
+    TCB_t *TCBLow = findThreadByID(&(PriorityQueue.low), id);
+
+    if(TCBHigh != NULL)
+        return TCBHigh;
+
+    if(TCBMedium != NULL)
+        return TCBMedium;
+
+    if(TCBLow != NULL)
+        return TCBLow;
+
+    return NULL;
+}
+
+TCB_t *getRunningThread(){
+    return findThreadByIDInAllQueues(CurrentThreadID);
+}
+
+TCB_t *findThreadByStateInAllQueues(int state){
+    TCB_t *TCBHigh = findThreadByState(&(PriorityQueue.high), state);
+    TCB_t *TCBMedium = findThreadByState(&(PriorityQueue.medium), state);
+    TCB_t *TCBLow = findThreadByState(&(PriorityQueue.low), state);
+
+    if(TCBHigh != NULL)
+        return TCBHigh;
+
+    if(TCBMedium != NULL)
+        return TCBMedium;
+
+    if(TCBLow != NULL)
+        return TCBLow;
+
+    return NULL;
+}
+
+TCB_t *getReadyThread(){
+    return findThreadByStateInAllQueues(PROCST_APTO);
 }
 
 // Coloca o TCB em um novo item e coloca-o no final da fila correspondente a sua prioridade
 int addThreadToQueue(TCB_t *tcb){
-    int flag;
-    PNODE2 newNode;
-
-    newNode = malloc(sizeof(NODE2));
-    newNode->node = (void *)tcb;
-    newNode->ant = NULL;
-    newNode->next = NULL;
-
     if(tcb->prio == 0)
-        flag = AppendFila2(&PriorityQueue.high, (void *)newNode);
-    else if(tcb->prio == 1)
-        flag = AppendFila2(&PriorityQueue.medium, (void *)newNode);
-    else if(tcb->prio == 2)
-        flag = AppendFila2(&PriorityQueue.low, (void *)newNode);
-    else
-        return -1;
+        return AppendFila2(&(PriorityQueue.high), tcb);
 
-    return flag;
-}
+    if(tcb->prio == 1)
+        return AppendFila2(&(PriorityQueue.medium), tcb);
 
-PFILA2 getRunningThread(){
-    return findThreadByIDInAllQueues(CurrentThreadID);
+    if(tcb->prio == 2)
+        return AppendFila2(&(PriorityQueue.low), tcb);
+
+    return -1;
 }
 
 int deleteThreadByID(int id){
@@ -103,45 +136,9 @@ void deleteCurrentThread(){
     deleteThreadByID(CurrentThreadID);
 }
 
-// Retorna ponteiro para uma fila de prioridade que não estiver vazia com iterador da fila no primeiro item da mesma
-PFILA2 getNonEmptyQueue(){
-    if(FirstFila2(&PriorityQueue.high) == 0)
-        return &PriorityQueue.high;
-    else if(FirstFila2(&PriorityQueue.medium) == 0)
-        return &PriorityQueue.medium;
-    else if(FirstFila2(&PriorityQueue.low) == 0)
-        return &PriorityQueue.low;
-    else
-        return NULL;
-}
-
-// Retorna ponteiro para um nodo com TCB de estado APTO na fila mais prioritária
-PFILA2 getReadyThread(){
-    PFILA2 PQueue = getNonEmptyQueue();
-    TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
-
-    while(tcb != NULL)
-    {
-        if(tcb->state == PROCST_APTO)
-            return PQueue;
-
-        NextFila2(PQueue);
-        tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
-    }
-
-    return NULL;
-}
-
 void ScheduleThreads(){
-    PFILA2 PQueueCurrent = getRunningThread();
-    PFILA2 PQueueReady = getReadyThread();
-    TCB_t *TCBCurrent = (TCB_t *)GetAtIteratorFila2(PQueueCurrent);
-    TCB_t *TCBReady = (TCB_t *)GetAtIteratorFila2(PQueueReady);
-
-
-		if(isEndOfThread == 1){
-			//funcao que lida com semaforo
-		}
+    TCB_t *TCBCurrent = getRunningThread();
+    TCB_t *TCBReady = getReadyThread();
 
     if(TCBReady == NULL)
         return;
@@ -151,15 +148,14 @@ void ScheduleThreads(){
 
     if(TCBCurrent->state == PROCST_APTO || TCBCurrent->state == PROCST_EXEC)
     {
-        // 0 = alta, 1 = média, 2 = baixa
-        // Preempção só ocorre se a prioridade for superior
+        // Preempção só ocorre se a prioridade for superior (no caso se valor for menor)
         if(TCBReady->prio < TCBCurrent->prio)
         {
             TCBCurrent->state = PROCST_APTO;
             TCBReady->state = PROCST_EXEC;
 
-						CurrentThreadID = TCBReady->tid;
-            swapcontext(&TCBCurrent->context, &TCBReady->context); // usa-se "->" pois TCBCurrent é um *ponteiro* pra uma estrutura, e "&" pois swapcontext requer o *endereço* de um contexto
+            CurrentThreadID = TCBReady->tid;
+            swapcontext(&(TCBCurrent->context), &(TCBReady->context));
         }
     }
     else
@@ -167,260 +163,183 @@ void ScheduleThreads(){
         TCBReady->state = PROCST_EXEC;
 
         CurrentThreadID = TCBReady->tid;
-        swapcontext(&TCBCurrent->context, &TCBReady->context);
+        swapcontext(&(TCBCurrent->context), &(TCBReady->context));
     }
 }
 
-void ScheduleThreadsPreemptive(){
-	isEndOfThread=0;
-	ScheduleThreads();
-}
-
-void ScheduleThreadsEndOfThread(){
-	isEndOfThread=1;
-	ScheduleThreads();
-}
-
 /*-------------------------------------------------------------------
-                            ESCALONADOR(fim)
+                            ESCALONADOR
 -------------------------------------------------------------------*/
 
 /*-------------------------------------------------------------------
-														funcoes suporte (lembrar de colocar um nome melhor para essas funcoes)
----------------------------------------------------------------------*/
+                              SUPORTE
+-------------------------------------------------------------------*/
 
+void initializeMainTCB(){
+	TCB_t *TCBMain = (TCB_t *)malloc(sizeof(TCB_t));
 
-int getNewThreadId(){
-	idCounter++;
-	return idCounter;
-}
+	getcontext(&(TCBMain->context));
 
-void createMainTCB(){
-	TCB_t* mainThread ;
-	mainThread = malloc(sizeof(TCB_t));          //criar uma funcao para alocar de maneira segura LEMBRAR
-	mainThread->tid = getNewThreadId();
-	mainThread->state = PROCST_EXEC;
-	mainThread->prio = LOW_PRIORITY;
+	TCBMain->state = PROCST_EXEC;
+	TCBMain->tid = 0;
+	TCBMain->prio = LOW_PRIORITY;
 
+	tcbExtra_t *mainExtra = (tcbExtra_t *)malloc(sizeof(tcbExtra_t));
+	//mainExtra->join = NULL;
+	TCBMain->data = (void *)mainExtra;
 
-	getcontext(&(mainThread->context));
-
-	tcbExtra_t* mainExtra = malloc(sizeof(tcbExtra_t));  //alocando as variaveis que nos julgaremos uteis para a implementacao;
-	mainThread->data = mainExtra;
-
-	addThreadToQueue(mainThread);
+	addThreadToQueue(TCBMain);
 
 	return;
 }
 
-void addNewTCB(TCB_t* fatherThread,int prio,void* (*start)(void*),void *arg){ //daria para fazer o numero de argumentos ficar menor,mas nao sei se vale muito a pena
+void initializeCthread(){
+    CreateFila2(&(PriorityQueue.high));
+    CreateFila2(&(PriorityQueue.medium));
+    CreateFila2(&(PriorityQueue.low));
 
+	initializeMainTCB();
 
-	TCB_t* newThread;
-	ucontext_t* tempContext= NULL;
-	newThread = malloc(sizeof(TCB_t));
-	newThread->tid = getNewThreadId();
-	newThread->state = PROCST_APTO;
-	newThread->prio = prio;
+	isInitialized = 1;
 
-	getcontext(&(newThread->context));                                 //criacao do novo contexto
-	newThread->context.uc_stack.ss_sp = malloc(sizeof(char)*BYTES_IN_STACK);
-	newThread->context.uc_stack.ss_size = sizeof(char)*BYTES_IN_STACK;
-
-	makecontext(tempContext,ScheduleThreadsEndOfThread,0);
-	newThread->context.uc_link = tempContext;
-	makecontext(&(newThread->context),(void(*)(void))start,1,arg);//makecontext necessita de um void(*)(void),start eh do tipo void*(start)(void*),tenho certeza de que tem algo errado aqui
-
-	tcbExtra_t* newExtra = malloc(sizeof(tcbExtra_t));              //recursos extras
-	newThread->data = newExtra;
-
-	addThreadToQueue(newThread);
-
-}
-
-void initializeCthread(){               //se no futuro mais coisas precisem ser inicializadas para cthread colocar aqui
-
-    // Inicializa as filas de threads
-  CreateFila2(&(PriorityQueue.high));
-  CreateFila2(&(PriorityQueue.medium));
-  CreateFila2(&(PriorityQueue.low));
-
-	createMainTCB();
-	CurrentThreadID = 0;
-	isCthreadInitialized = 1;
 	return;
-}
-
-
-int getCurrentThread(TCB_t** currentTCB){   //retorna 0 para sucesso -1 caso contrario
-	PFILA2 filaTemp;
-
-	//printf("antes de getRunningThread\n" );
-
-	filaTemp=getRunningThread();
-
-	if(filaTemp==NULL)
-		return -1;
-
-	//printf("conseguiu pegar a thread\n" );
-
-	*currentTCB=(TCB_t*)GetAtIteratorFila2(filaTemp);
-
-	return 0;
-}
-
-void copyTcb(TCB_t** destination,TCB_t* source){
-
-	*destination = malloc(sizeof(TCB_t));
-	(*destination)->tid = source->tid;
-	(*destination)->state = source->state;
-	(*destination)->prio = source->prio;
-	(*destination)->context = source->context;
-	(*destination)->data = source->data;
-
 }
 
 // Causa a thread que chamou a função a terminar sua execução (não precisa recuperar qualquer retorno)
 void exitThread(){
-    PFILA2 PQueueCurrent = getRunningThread();
-    TCB_t *TCBCurrent = (TCB_t *)GetAtIteratorFila2(PQueueCurrent);
+    TCB_t *TCBCurrent = getRunningThread();
 
     TCBCurrent->state = PROCST_TERMINO;
 
     ScheduleThreads();
 }
 
-void startThread(void *(*start)(void *), void *arg){
-    // Executa função mas não precisa salvar retorno na estrutura do TCB
-    start((void *)arg);
-}
+ucontext_t *makeLinkContext(void (*start)(void)){
+    ucontext_t *context = (ucontext_t *)malloc(sizeof(ucontext_t));
 
-ucontext_t makeLinkContext(void (*start)(void)){
-    ucontext_t context;
+    getcontext(context);
 
-    getcontext(&context);
+    context->uc_stack.ss_sp = malloc(sizeof(char)*BYTES_IN_STACK);
+    context->uc_stack.ss_size = sizeof(char)*BYTES_IN_STACK;
+    context->uc_link = NULL;
 
-    context.uc_stack.ss_sp = (char *)malloc(sizeof(char)*BYTES_IN_STACK);
-    context.uc_stack.ss_size = sizeof(char)*BYTES_IN_STACK;
-    context.uc_link = NULL;
-
-    makecontext(&context, start, 0);
+    makecontext(context, start, 0);
 
     return context;
 }
 
-ucontext_t makeThreadContext(void (*func)(void), ucontext_t *linkContext, void *start, void *arg){
-    ucontext_t context;
+ucontext_t *makeThreadContext(void (*start)(void), ucontext_t *linkContext, void *arg){
+    ucontext_t *context = (ucontext_t *)malloc(sizeof(ucontext_t));
 
-    getcontext(&context);
+    getcontext(context);
 
-    context.uc_stack.ss_sp = (char *)malloc(sizeof(char)*BYTES_IN_STACK);
-    context.uc_stack.ss_size = sizeof(char)*BYTES_IN_STACK;
-    context.uc_link = linkContext;
+    context->uc_stack.ss_sp = malloc(sizeof(char)*BYTES_IN_STACK);
+    context->uc_stack.ss_size = sizeof(char)*BYTES_IN_STACK;
+    context->uc_link = linkContext;
 
-    makecontext(&context, func, 2, start, arg);
+    makecontext(context, start, 1, arg);
 
     return context;
 }
 
 /*-------------------------------------------------------------------
-														funcoes suporte-fim (lembrar de colocar um nome melhor para essas funcoes)
----------------------------------------------------------------------*/
+                              SUPORTE
+-------------------------------------------------------------------*/
 
 // Cria uma thread para executar a função que começa em start
 // Segundo especificação, retorna o ID da nova thread caso sucesso
-int ccreate (void* (*start)(void*), void *arg, int prio){
+int ccreate (void *(*start)(void *), void *arg, int prio){
     if(prio > LOW_PRIORITY || prio < HIGH_PRIORITY)
         return -1;
 
-    if(isCthreadInitialized == 0)
-	initializeCthread();
+    if(isInitialized == 0)
+		initializeCthread();
 
-    ucontext_t linkContext = makeLinkContext(exitThread);
+    ucontext_t *linkContext = makeLinkContext(exitThread);
 
     // Quando contexto termina, irá mudar para o contexto apontado no uc_link
     // Contexto link garante que estado passe para terminado com função exitThread() (e não precisa recuperar qualquer retorno)
-    ucontext_t threadContext = makeThreadContext(startThread, &linkContext, start, arg);
+    ucontext_t *threadContext = makeThreadContext((void (*)(void))start, linkContext, arg);
 
     TCB_t *tcb = (TCB_t *)malloc(sizeof(TCB_t));
+
     tcb->prio = prio;
-    tcb->tid = getNewThreadId();
+    tcb->tid = getNewThreadID();
     tcb->state = PROCST_APTO;
-    tcb->context = threadContext;
+    tcb->context = *threadContext;
 
     tcbExtra_t *mainExtra = (tcbExtra_t *)malloc(sizeof(tcbExtra_t));
     tcb->data = (void *)mainExtra;
 
     addThreadToQueue(tcb);
-
+    printf("THREAD ID: %d FOI ADICIONADA!\n", tcb->tid);
     ScheduleThreads();
 
     return tcb->tid;
-// Código anterior comentado
-/*	TCB_t* currentTCB;
-
-	//printf("antesde inicializar\n" );
-	if(!isCthreadInitialized){
-		initializeCthread();
-
-	}
-	//printf("depois de inicializar\n" );
-	if(getCurrentThread(&currentTCB)<0) return -1;
-
-	//printf("depois de pegar a thread" );
-
-	addNewTCB(currentTCB,prio,start,arg);
-
-	//printf("depois de adicionar tcb\n" );
-
-	ScheduleThreadsPreemptive();
-
-	return 0;
-			*/
 }
 
+// Causa a thread que chamou a função a mudar sua PRÓPRIA prioridade
+// Segundo especificação, o parâmetro tid deve ser sempre NULL
 int csetprio(int tid, int prio){
+    if(prio > LOW_PRIORITY || prio < HIGH_PRIORITY)
+        return -1;
 
-	PFILA2 filaTemp;
-	//PNODE2 nodeTemp;
-	TCB_t* tcbAtual;
+	TCB_t *TCBCurrent = getRunningThread();
 
-	filaTemp = getRunningThread();
+	if(TCBCurrent == NULL)
+        return -1;
+	printf("THREAD PRIO: %d -> ", TCBCurrent->prio);
+    TCBCurrent->prio = prio;
+	printf("THREAD PRIO: %d\n", TCBCurrent->prio);
+    deleteCurrentThread();
+    addThreadToQueue(TCBCurrent);
 
-	if(filaTemp == NULL)
-		return -1;
-
-	tcbAtual = GetAtIteratorFila2(filaTemp);
-
-	tcbAtual->prio=prio;
-
-	TCB_t* copyNode;
-	copyTcb(&copyNode,tcbAtual);
-
-	deleteThreadByID(tcbAtual->tid);
-
-	addThreadToQueue(copyNode);
-
-	ScheduleThreadsPreemptive();
+	ScheduleThreads();
 
 	return 0;
 }
 
+// Causa a thread que chamou a função a ceder sua execução e ativar o escalonador
 int cyield(void){
+    TCB_t *TCBCurrent = getRunningThread();
 
-	TCB_t* currentTCB;
-
-	if(getCurrentThread(&currentTCB)<0)
-		return -1;
-
-	currentTCB->state=PROCST_APTO;
-
-	ScheduleThreadsPreemptive();
+    if(TCBCurrent == NULL)
+        return -1;
+	printf("THREAD STATE: %d -> ", TCBCurrent->state);
+    TCBCurrent->state = PROCST_APTO;
+	printf("THREAD STATE: %d\n", TCBCurrent->state);
+    ScheduleThreads();
 
 	return 0;
 }
 
+// Thread atual é bloqueada até que thread com ID == tid chame a exitThread()
 int cjoin(int tid){
+    /*// Uma determinada thread só pode ser esperada por uma única outra thread
+    // Se duas ou mais threads fizerem cjoin para uma mesma thread, apenas a primeira que realizou a chamada será bloqueada
+    PFILA2 PQueue = findThreadByIDInAllQueues(tid);
+    TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
+    PFILA2 PQueueCurrent = getRunningThread();
+    TCB_t *TCBCurrent = (TCB_t *)GetAtIteratorFila2(PQueueCurrent);
+
+    if(tcb != NULL)
+    {
+        //tcb->(tcbExtra_t *)data->jointid = TCBCurrent->tid;
+        //TCBCurrent->(tcbExtra_t *)data->join = tcb;
+
+        if(tcb->state != PROCST_TERMINO)
+        {
+            TCBCurrent->state = PROCST_BLOQ;
+            ScheduleThreads();
+        }
+    }
+    else
+    {
+        // Não existe ou já terminou
+        return -1;
+    }
+
+	return 0;*/
 	return -1;
 }
 
@@ -433,38 +352,29 @@ int csem_init(csem_t *sem, int count){
 
     sem->count = count;
 
-    return 0;
+	return 0;
 }
 
 int cwait(csem_t *sem){
-    PFILA2 PQueueCurrent = getRunningThread();
+    TCB_t *TCBCurrent = getRunningThread();
 
-    if(PQueueCurrent == NULL)
+	if(TCBCurrent == NULL)
         return -1;
 
     if(sem == NULL)
         return -1;
 
-    TCB_t *TCBCurrent = (TCB_t *)GetAtIteratorFila2(PQueueCurrent);
-
     if(sem->count <= 0)
     {
         TCBCurrent->state = PROCST_BLOQ;
 
-        PNODE2 newNode;
-
-        newNode = (PNODE2)malloc(sizeof(NODE2));
-        newNode->node = (void *)TCBCurrent;
-        newNode->ant = NULL;
-        newNode->next = NULL;
-
-        if(AppendFila2(sem->fila, (void *)newNode) != 0)
+        if(AppendFila2(sem->fila, TCBCurrent) != 0)
             return -1;
     }
 
     sem->count = sem->count - 1;
 
-    return 0;
+	return 0;
 }
 
 int csignal(csem_t *sem){
@@ -474,7 +384,7 @@ int csignal(csem_t *sem){
     if(sem == NULL)
         return -1;
 
-    if(FirstFila2(sem->fila) != 0)
+	if(FirstFila2(sem->fila) != 0)
         return -1;
 
     TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(sem->fila);
@@ -501,10 +411,11 @@ int csignal(csem_t *sem){
         tcb->state = PROCST_APTO;
     }
 
-    return 0;
+	return 0;
 }
 
 int cidentify (char *name, int size){
 	strncpy (name, "Humberto Lentz - 242308\nMakoto Ishikawa - 216728\nPedro Teixeira - 228509", size);
+
 	return 0;
 }
