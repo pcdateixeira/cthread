@@ -128,8 +128,15 @@ int addThreadToQueue(TCB_t *tcb){
 }
 
 int deleteThreadByID(int id){
-    PFILA2 PQueue = findThreadByIDInAllQueues(id);
-    return DeleteAtIteratorFila2(PQueue);
+    TCB_t *tcb = findThreadByIDInAllQueues(id); // A função só chama a findThread... para iterar a fila na qual a thread está
+
+    switch(tcb->prio) {
+        case 0: return DeleteAtIteratorFila2(&(PriorityQueue.high));
+        case 1: return DeleteAtIteratorFila2(&(PriorityQueue.medium));
+        case 2: return DeleteAtIteratorFila2(&(PriorityQueue.low));
+    }
+
+    return 1;
 }
 
 void deleteCurrentThread(){
@@ -290,6 +297,9 @@ int ccreate (void *(*start)(void *), void *arg, int prio){
 int csetprio(int tid, int prio){
     if(prio > LOW_PRIORITY || prio < HIGH_PRIORITY)
         return -1;
+
+    if(isInitialized == 0)
+        initializeCthread();
 
 	TCB_t *TCBCurrent = getRunningThread();
 

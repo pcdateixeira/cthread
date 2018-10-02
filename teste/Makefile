@@ -1,20 +1,20 @@
 #
-# Makefile para programas exemplo
+# Makefile para programas de teste criados pelos alunos
 # 
 
 CC=gcc
 LIB_DIR=../lib
 
-all: exemplo1 exemplo2
+all: teste1 teste2
 
-exemplo1: exemplo1.c $(LIB_DIR)/libcthread.a
-	$(CC) -o exemplo1 exemplo1.c -L$(LIB_DIR) -lcthread -Wall
+teste1: teste1.c $(LIB_DIR)/libcthread.a
+	$(CC) -o teste1 teste1.c -L$(LIB_DIR) -lcthread -Wall
 
-exemplo2: exemplo2.c $(LIB_DIR)/libcthread.a
-	$(CC) -o exemplo2 exemplo2.c -L$(LIB_DIR) -lcthread -Wall
+teste2: teste2.c $(LIB_DIR)/libcthread.a
+	$(CC) -o teste2 teste2.c -L$(LIB_DIR) -lcthread -Wall
 	
 clean:
-	rm -rf exemplo1 exemplo2 *.o *~
+	rm -rf teste1 teste2 *.o *~
 
 
 
