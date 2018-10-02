@@ -61,7 +61,7 @@ TCB_t *findThreadByState(PFILA2 PQueue, int state){
 
     while(tcb != NULL)
     {
-        if(tcb->state == state)
+        if(tcb->state == state && tcb->tid != CurrentThreadID)
             return tcb;
 
         NextFila2(PQueue);
@@ -136,9 +136,10 @@ void deleteCurrentThread(){
     deleteThreadByID(CurrentThreadID);
 }
 
-void ScheduleThreads(){
+void ScheduleThreads(int yielding){
     TCB_t *TCBCurrent = getRunningThread();
     TCB_t *TCBReady = getReadyThread();
+
 
     if(TCBReady == NULL)
         return;
@@ -149,7 +150,8 @@ void ScheduleThreads(){
     if(TCBCurrent->state == PROCST_APTO || TCBCurrent->state == PROCST_EXEC)
     {
         // Preempção só ocorre se a prioridade for superior (no caso se valor for menor)
-        if(TCBReady->prio < TCBCurrent->prio)
+        // Alternativamente, se a thread atual cedeu controle para outra de mesma prioridade, ela **não** deve continuar em execução
+        if(TCBReady->prio < TCBCurrent->prio || (TCBReady->prio == TCBCurrent->prio && yielding))
         {
             TCBCurrent->state = PROCST_APTO;
             TCBReady->state = PROCST_EXEC;
@@ -215,7 +217,7 @@ void exitThread(){
     if(((tcbExtra_t *)(TCBCurrent->data))->join != NULL && ((tcbExtra_t *)(TCBCurrent->data))->join->state == PROCST_BLOQ)
         ((tcbExtra_t *)(TCBCurrent->data))->join->state = PROCST_APTO;
 
-    ScheduleThreads();
+    ScheduleThreads(0);
 }
 
 ucontext_t *makeLinkContext(void (*start)(void)){
@@ -278,7 +280,7 @@ int ccreate (void *(*start)(void *), void *arg, int prio){
 
     addThreadToQueue(tcb);
     printf("THREAD ID: %d FOI ADICIONADA!\n", tcb->tid);
-    ScheduleThreads();
+    ScheduleThreads(0);
 
     return tcb->tid;
 }
@@ -299,7 +301,7 @@ int csetprio(int tid, int prio){
     deleteCurrentThread();
     addThreadToQueue(TCBCurrent);
 
-	ScheduleThreads();
+	ScheduleThreads(0);
 
 	return 0;
 }
@@ -313,7 +315,7 @@ int cyield(void){
 	printf("THREAD STATE: %d -> ", TCBCurrent->state);
     TCBCurrent->state = PROCST_APTO;
 	printf("THREAD STATE: %d\n", TCBCurrent->state);
-    ScheduleThreads();
+    ScheduleThreads(1);
 
 	return 0;
 }
@@ -333,7 +335,7 @@ int cjoin(int tid){
         {
             TCBCurrent->state = PROCST_BLOQ;
 
-            ScheduleThreads();
+            ScheduleThreads(0);
         }
     }
     else
