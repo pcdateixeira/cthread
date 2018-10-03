@@ -11,7 +11,7 @@
 #define HIGH_PRIORITY 0
 
 #define BYTES_IN_STACK 8192                   //LEMBRAR : antes de entregar aumentar o stack.
-#define DEBUG_MODE 0                          //para encapsular os prints de debug com algo do tipo  if(DEBUG_MODE) print("aconteceu x \n");
+#define DEBUG_MODE 1                          //para encapsular os prints de debug com algo do tipo  if(DEBUG_MODE) print("aconteceu x \n");
 
 
 // Relacionado a variável data do tcb
@@ -408,6 +408,7 @@ int cwait(csem_t *sem){
         if(AppendFila2(sem->fila, TCBCurrent) != 0)
             return -1;
 
+        if(DEBUG_MODE) printf("antes de escalonar em cwait\n" );
         ScheduleThreads(0);
     }
 
@@ -416,40 +417,53 @@ int cwait(csem_t *sem){
 }
 
 int csignal(csem_t *sem){
+
     sem->count = sem->count + 1;
-    PFILA2 PQueue;
+    if(DEBUG_MODE) printf("antes de incrementar o contador em csignal. %d = count \n",sem->count);
+
+    PFILA2 PQueue=sem->fila;
     int prio;
 
     if(sem == NULL)
         return -1;
 
+
+  if(DEBUG_MODE) printf("antes de checar as filas do semaforo em csignal. %p = semaforo %p=semaforo->fila\n",sem,sem->fila);
+
 	if(FirstFila2(sem->fila) != 0)
         return -1;
 
-    TCB_t *tcb_sem = (TCB_t *)GetAtIteratorFila2(sem->fila);
+    TCB_t* tcb_sem = (TCB_t *)GetAtIteratorFila2(sem->fila);
 
+    if(DEBUG_MODE) printf("tcb_sem = %p \n",tcb_sem );
 
-    if(sem->count > 0)
+    if(sem->count >= 0)
     {
+        if(DEBUG_MODE) printf("antes de pegar a prioridade em csignal\n" );
         prio = tcb_sem->prio;
+        if(DEBUG_MODE) printf("depois de pegar a prioridade em csignal\n" );
 
         while(tcb_sem != NULL)
         {
             if(tcb_sem->prio < prio)
             {
+                if(DEBUG_MODE) printf("dentro do if do loop em csignal\n");
                 prio = tcb_sem->prio;
                 PQueue = sem->fila;
             }
 
+            if(DEBUG_MODE) printf("antes de pegar o prox tcb no loop em csignal\n" );
             NextFila2(sem->fila);
             tcb_sem = (TCB_t *)GetAtIteratorFila2(sem->fila);
         }
 
+        if(DEBUG_MODE) printf("antes de pegar o tcb de maior prioridade em csignal");
         tcb_sem = (TCB_t *)GetAtIteratorFila2(PQueue); // Encontra o TCB na fila do semáforo, mas falta encontrar o mesmo TCB nas filas de prioridades
 
         TCB_t *tcb = findThreadByIDInAllQueues(tcb_sem->tid);
         tcb->state = PROCST_APTO; // o TCB, que estava bloqueado, volta para o estado apto
 
+        if(DEBUG_MODE) printf("antes de escalonar em csignal\n" );
         ScheduleThreads(0);
     }
 

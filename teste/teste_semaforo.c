@@ -3,18 +3,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+csem_t* semaforo;
 
 void* func() {
 
-	printf("Thread func trocando sua prioridade para máxima e tentando entrar na seção crítica. Eu não vou conseguir entrar nela e passarei para estado bloqueado\n");
+	printf("Thread func trocando sua prioridade para maxima e tentando entrar na secaoo critica.\n");
+	printf("Eu nao vou conseguir entrar nela e passarei para estado bloqueado\n");
+
 
 	csetprio(NULL, 0);
 
-	//cwait(semaforo);
+	cwait(semaforo);
 
-	printf("Com a seção crítica liberada, a thread func é desbloqueada e pode executar\n");
+  printf("Com a secao critica liberada, a thread func e desbloqueada e pode executar\n");
 
-	//csignal(semaforo);
+	csignal(semaforo);
 
 	return 0;
 }
@@ -23,26 +26,29 @@ int main(int argc, char *argv[]) {
 
 	int tid = 0;
 
-	//csem_init(semaforo, 1);
+	semaforo = malloc(sizeof(csem_t));
+	csem_init(semaforo, 1);
 
 	csetprio(NULL, 1);
 
 	tid = ccreate(func, 0, 1);
 
-	printf("Main entrando na seção crítica...\n");
+  printf("Main entrando na secao critica...\n");
 
-	//cwait(semaforo);
+	cwait(semaforo);
 
-	printf("Thread main dentro da seção crítica. Eu vou ceder controle para a thread func\n");
+	printf("Thread main dentro da secao critica.\n");
+	printf("Eu vou ceder controle para a thread func\n");
 
 	cyield();
 
-	printf("Thread main em controle novamente, agora saindo da seção crítica para liberar a thread func\n");
+	printf("Thread main em controle novamente,\n");
+	printf("agora saindo da secao critica para liberar a thread func\n");
 
-	//csignal(semaforo);
+	printf("ponteiro do semaforo = %p \n",semaforo);
+	csignal(semaforo);
 
-	printf("Terminando o programa...\n");
+  printf("Terminando o programa...\n");
 
 	return 0;
 }
-
