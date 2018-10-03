@@ -10,7 +10,9 @@
 #define MEDIUM_PRIORITY 1
 #define HIGH_PRIORITY 0
 
-#define BYTES_IN_STACK 8192
+#define BYTES_IN_STACK 8192                   //LEMBRAR : antes de entregar aumentar o stack.
+#define DEBUG_MODE 0                          //para encapsular os prints de debug com algo do tipo  if(DEBUG_MODE) print("aconteceu x \n");
+
 
 // Relacionado a variável data do tcb
 typedef struct tcbExtra{
@@ -286,7 +288,9 @@ int ccreate (void *(*start)(void *), void *arg, int prio){
 	tcb->data = (void *)mainExtra;
 
     addThreadToQueue(tcb);
-    printf("THREAD ID: %d FOI ADICIONADA!\n", tcb->tid);
+
+    if(DEBUG_MODE) printf("THREAD ID: %d FOI ADICIONADA!\n", tcb->tid);
+
     ScheduleThreads(0);
 
     return tcb->tid;
@@ -295,36 +299,46 @@ int ccreate (void *(*start)(void *), void *arg, int prio){
 // Causa a thread que chamou a função a mudar sua PRÓPRIA prioridade
 // Segundo especificação, o parâmetro tid deve ser sempre NULL
 int csetprio(int tid, int prio){
+
     if(prio > LOW_PRIORITY || prio < HIGH_PRIORITY)
         return -1;
 
     if(isInitialized == 0)
         initializeCthread();
 
-	TCB_t *TCBCurrent = getRunningThread();
+	  TCB_t *TCBCurrent = getRunningThread();
 
-	if(TCBCurrent == NULL)
+	  if(TCBCurrent == NULL)
         return -1;
-	printf("THREAD PRIO: %d -> ", TCBCurrent->prio);
+
+	  if(DEBUG_MODE) printf("THREAD PRIO: %d -> ", TCBCurrent->prio);
+
     TCBCurrent->prio = prio;
-	printf("THREAD PRIO: %d\n", TCBCurrent->prio);
+
+    if(DEBUG_MODE) printf("THREAD PRIO: %d\n", TCBCurrent->prio);
+
     deleteCurrentThread();
     addThreadToQueue(TCBCurrent);
 
-	ScheduleThreads(0);
+	  ScheduleThreads(0);
 
-	return 0;
+	  return 0;
 }
 
 // Causa a thread que chamou a função a ceder sua execução e ativar o escalonador
 int cyield(void){
+
     TCB_t *TCBCurrent = getRunningThread();
 
     if(TCBCurrent == NULL)
         return -1;
-	printf("THREAD STATE: %d -> ", TCBCurrent->state);
+
+    if(DEBUG_MODE) printf("THREAD STATE: %d -> ", TCBCurrent->state);
+
     TCBCurrent->state = PROCST_APTO;
-	printf("THREAD STATE: %d\n", TCBCurrent->state);
+
+    if(DEBUG_MODE) printf("THREAD STATE: %d\n", TCBCurrent->state);
+
     ScheduleThreads(1);
 
 	return 0;
@@ -358,11 +372,18 @@ int cjoin(int tid){
 }
 
 int csem_init(csem_t *sem, int count){
+
+    //LEMBRAR:perguntar se a temos que alocar o semaforo no csem_init ou se ele ja vai estar alocado
+
+
     if(sem == NULL)
         return -1;
 
-    if(CreateFila2(sem->fila) != 0)
-        return -1;
+    //if(CreateFila2(sem->fila) != 0)
+      //  return -1;
+    FILA2 filaTemp ;
+    CreateFila2(&filaTemp);         //por alguma razao da segmentation fault se tentarmos mandar um PFILA2 mas isso nao acontece para &FILA2
+    sem->fila =&filaTemp;
 
     sem->count = count;
 
