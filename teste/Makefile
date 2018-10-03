@@ -5,16 +5,16 @@
 CC=gcc
 LIB_DIR=../lib
 
-all: teste1 teste2
+all: teste_yield teste_setprio
 
-teste1: teste1.c $(LIB_DIR)/libcthread.a
-	$(CC) -o teste1 teste1.c -L$(LIB_DIR) -lcthread -Wall
+teste_yield: teste_yield.c $(LIB_DIR)/libcthread.a
+	$(CC) -o teste_yield teste_yield.c -L$(LIB_DIR) -lcthread -Wall
 
-teste2: teste2.c $(LIB_DIR)/libcthread.a
-	$(CC) -o teste2 teste2.c -L$(LIB_DIR) -lcthread -Wall
+teste_setprio: teste_setprio.c $(LIB_DIR)/libcthread.a
+	$(CC) -o teste_setprio teste_setprio.c -L$(LIB_DIR) -lcthread -Wall
 	
 clean:
-	rm -rf teste1 teste2 *.o *~
+	rm -rf teste_yield teste_setprio *.o *~
 
 
 
