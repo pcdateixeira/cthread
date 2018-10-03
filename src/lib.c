@@ -361,8 +361,11 @@ int csem_init(csem_t *sem, int count){
     if(sem == NULL)
         return -1;
 
-    if(CreateFila2(sem->fila) != 0)
-        return -1;
+    //if(CreateFila2(sem->fila) != 0)
+      //  return -1;
+    FILA2 filaTemp ;
+    CreateFila2(&filaTemp);         //por alguma razao da segmentation fault se tentarmos mandar um PFILA2 mas isso nao acontece para &FILA2
+    sem->fila =&filaTemp;
 
     sem->count = count;
 
