@@ -370,7 +370,9 @@ int csem_init(csem_t *sem, int count){
 }
 
 int cwait(csem_t *sem){
+    sem->count = sem->count - 1;
     TCB_t *TCBCurrent = getRunningThread();
+
 
 	if(TCBCurrent == NULL)
         return -1;
@@ -378,20 +380,22 @@ int cwait(csem_t *sem){
     if(sem == NULL)
         return -1;
 
-    if(sem->count <= 0)
+    if(sem->count < 0)
     {
         TCBCurrent->state = PROCST_BLOQ;
 
         if(AppendFila2(sem->fila, TCBCurrent) != 0)
             return -1;
+
+        ScheduleThreads(0);
     }
 
-    sem->count = sem->count - 1;
 
 	return 0;
 }
 
 int csignal(csem_t *sem){
+    sem->count = sem->count + 1;
     PFILA2 PQueue;
     int prio;
 
@@ -401,28 +405,31 @@ int csignal(csem_t *sem){
 	if(FirstFila2(sem->fila) != 0)
         return -1;
 
-    TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(sem->fila);
+    TCB_t *tcb_sem = (TCB_t *)GetAtIteratorFila2(sem->fila);
 
-    sem->count = sem->count + 1;
 
     if(sem->count > 0)
     {
-        prio = tcb->prio;
+        prio = tcb_sem->prio;
 
-        while(tcb != NULL)
+        while(tcb_sem != NULL)
         {
-            if(tcb->prio < prio)
+            if(tcb_sem->prio < prio)
             {
-                prio = tcb->prio;
+                prio = tcb_sem->prio;
                 PQueue = sem->fila;
             }
 
             NextFila2(sem->fila);
-            tcb = (TCB_t *)GetAtIteratorFila2(sem->fila);
+            tcb_sem = (TCB_t *)GetAtIteratorFila2(sem->fila);
         }
 
-        tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
-        tcb->state = PROCST_APTO;
+        tcb_sem = (TCB_t *)GetAtIteratorFila2(PQueue); // Encontra o TCB na fila do semáforo, mas falta encontrar o mesmo TCB nas filas de prioridades
+
+        TCB_t *tcb = findThreadByIDInAllQueues(tcb_sem->tid);
+        tcb->state = PROCST_APTO; // o TCB, que estava bloqueado, volta para o estado apto
+
+        ScheduleThreads(0);
     }
 
 	return 0;
