@@ -13,7 +13,6 @@
 #define BYTES_IN_STACK 8192                   //LEMBRAR : antes de entregar aumentar o stack.
 #define DEBUG_MODE 0                          //para encapsular os prints de debug com algo do tipo  if(DEBUG_MODE) print("aconteceu x \n");
 
-
 // Relacionado a variável data do tcb
 typedef struct tcbExtra{
     TCB_t *join;
@@ -36,9 +35,9 @@ int idCounter = 0;
 -------------------------------------------------------------------*/
 
 int getNewThreadID(){
-	idCounter++;
+    idCounter++;
 
-	return idCounter;
+    return idCounter;
 }
 
 TCB_t *findThreadByID(PFILA2 PQueue, int id){
@@ -132,7 +131,8 @@ int addThreadToQueue(TCB_t *tcb){
 int deleteThreadByID(int id){
     TCB_t *tcb = findThreadByIDInAllQueues(id); // A função só chama a findThread... para iterar a fila na qual a thread está
 
-    switch(tcb->prio) {
+    switch(tcb->prio)
+    {
         case 0: return DeleteAtIteratorFila2(&(PriorityQueue.high));
         case 1: return DeleteAtIteratorFila2(&(PriorityQueue.medium));
         case 2: return DeleteAtIteratorFila2(&(PriorityQueue.low));
@@ -148,7 +148,6 @@ void deleteCurrentThread(){
 void ScheduleThreads(int yielding){
     TCB_t *TCBCurrent = getRunningThread();
     TCB_t *TCBReady = getReadyThread();
-
 
     if(TCBReady == NULL)
         return;
@@ -187,21 +186,21 @@ void ScheduleThreads(int yielding){
 -------------------------------------------------------------------*/
 
 void initializeMainTCB(){
-	TCB_t *TCBMain = (TCB_t *)malloc(sizeof(TCB_t));
+    TCB_t *TCBMain = (TCB_t *)malloc(sizeof(TCB_t));
 
-	getcontext(&(TCBMain->context));
+    getcontext(&(TCBMain->context));
 
-	TCBMain->state = PROCST_EXEC;
-	TCBMain->tid = 0;
-	TCBMain->prio = LOW_PRIORITY;
+    TCBMain->state = PROCST_EXEC;
+    TCBMain->tid = 0;
+    TCBMain->prio = LOW_PRIORITY;
 
-	tcbExtra_t *mainExtra = (tcbExtra_t *)malloc(sizeof(tcbExtra_t));
-	mainExtra->join = NULL;
-	TCBMain->data = (void *)mainExtra;
+    tcbExtra_t *mainExtra = (tcbExtra_t *)malloc(sizeof(tcbExtra_t));
+    mainExtra->join = NULL;
+    TCBMain->data = (void *)mainExtra;
 
-	addThreadToQueue(TCBMain);
+    addThreadToQueue(TCBMain);
 
-	return;
+    return;
 }
 
 void initializeCthread(){
@@ -209,11 +208,11 @@ void initializeCthread(){
     CreateFila2(&(PriorityQueue.medium));
     CreateFila2(&(PriorityQueue.low));
 
-	initializeMainTCB();
+    initializeMainTCB();
 
-	isInitialized = 1;
+    isInitialized = 1;
 
-	return;
+    return;
 }
 
 // Causa a thread que chamou a função a terminar sua execução (não precisa recuperar qualquer retorno)
@@ -285,7 +284,7 @@ int ccreate (void *(*start)(void *), void *arg, int prio){
 
     tcbExtra_t *mainExtra = (tcbExtra_t *)malloc(sizeof(tcbExtra_t));
     mainExtra->join = NULL;
-	tcb->data = (void *)mainExtra;
+    tcb->data = (void *)mainExtra;
 
     addThreadToQueue(tcb);
 
@@ -306,12 +305,12 @@ int csetprio(int tid, int prio){
     if(isInitialized == 0)
         initializeCthread();
 
-	  TCB_t *TCBCurrent = getRunningThread();
+    TCB_t *TCBCurrent = getRunningThread();
 
-	  if(TCBCurrent == NULL)
+    if(TCBCurrent == NULL)
         return -1;
 
-	  if(DEBUG_MODE) printf("THREAD PRIO: %d -> ", TCBCurrent->prio);
+    if(DEBUG_MODE) printf("THREAD PRIO: %d -> ", TCBCurrent->prio);
 
     TCBCurrent->prio = prio;
 
@@ -320,14 +319,13 @@ int csetprio(int tid, int prio){
     deleteCurrentThread();
     addThreadToQueue(TCBCurrent);
 
-	  ScheduleThreads(0);
+    ScheduleThreads(0);
 
-	  return 0;
+    return 0;
 }
 
 // Causa a thread que chamou a função a ceder sua execução e ativar o escalonador
 int cyield(void){
-
     TCB_t *TCBCurrent = getRunningThread();
 
     if(TCBCurrent == NULL)
@@ -341,7 +339,7 @@ int cyield(void){
 
     ScheduleThreads(1);
 
-	return 0;
+    return 0;
 }
 
 // Thread atual é bloqueada até que thread com ID == tid chame a exitThread()
@@ -372,78 +370,102 @@ int cjoin(int tid){
 }
 
 int csem_init(csem_t *sem, int count){
-
     //LEMBRAR:perguntar se a temos que alocar o semaforo no csem_init ou se ele ja vai estar alocado
-
-
     if(sem == NULL)
         return -1;
 
-    //if(CreateFila2(sem->fila) != 0)
-      //  return -1;
-    FILA2 filaTemp ;
+    PFILA2 PQueue = malloc(sizeof(FILA2));
+    PQueue->it = NULL;
+    PQueue->first = NULL;
+    PQueue->last = NULL;
+
+    sem->fila = PQueue;
+
+    CreateFila2(sem->fila);
+    /*FILA2 filaTemp ;
     CreateFila2(&filaTemp);         //por alguma razao da segmentation fault se tentarmos mandar um PFILA2 mas isso nao acontece para &FILA2
-    sem->fila =&filaTemp;
+    sem->fila =&filaTemp;*/
 
     sem->count = count;
 
-	return 0;
+    return 0;
 }
 
 int cwait(csem_t *sem){
+    sem->count = sem->count - 1;
     TCB_t *TCBCurrent = getRunningThread();
 
-	if(TCBCurrent == NULL)
+    if(TCBCurrent == NULL)
         return -1;
 
     if(sem == NULL)
         return -1;
 
-    if(sem->count <= 0)
+    if(sem->count < 0)
     {
         TCBCurrent->state = PROCST_BLOQ;
 
-        if(AppendFila2(sem->fila, TCBCurrent) != 0)
-            return -1;
+        AppendFila2(sem->fila, TCBCurrent);
+
+        if(DEBUG_MODE) printf("antes de escalonar em cwait\n" );
+        ScheduleThreads(0);
     }
 
-    sem->count = sem->count - 1;
-
-	return 0;
+    return 0;
 }
 
 int csignal(csem_t *sem){
-    PFILA2 PQueue;
+    sem->count = sem->count + 1;
+    if(DEBUG_MODE) printf("antes de incrementar o contador em csignal. %d = count \n",sem->count);
+
+    PFILA2 PQueue = sem->fila;
     int prio;
 
     if(sem == NULL)
         return -1;
+	
+    if(sem->fila == NULL)
+		return -1;
 
-	if(FirstFila2(sem->fila) != 0)
-        return -1;
+    if(DEBUG_MODE) printf("antes de checar as filas do semaforo em csignal. %p = semaforo %p=semaforo->fila\n",sem,sem->fila);
 
-    TCB_t *tcb = (TCB_t *)GetAtIteratorFila2(sem->fila);
+    FirstFila2(sem->fila);
+    TCB_t *tcb_sem = (TCB_t *)GetAtIteratorFila2(sem->fila);
+	
+	if(tcb_sem == NULL)
+		return -1;
 
-    sem->count = sem->count + 1;
+    if(DEBUG_MODE) printf("tcb_sem = %p \n",tcb_sem );
 
-    if(sem->count > 0)
+    if(sem->count <= 0)
     {
-        prio = tcb->prio;
+        if(DEBUG_MODE) printf("antes de pegar a prioridade em csignal\n" );
+        prio = tcb_sem->prio;
+        if(DEBUG_MODE) printf("depois de pegar a prioridade em csignal\n" );
 
-        while(tcb != NULL)
+        while(tcb_sem != NULL)
         {
-            if(tcb->prio < prio)
+            if(tcb_sem->prio < prio)
             {
-                prio = tcb->prio;
+                if(DEBUG_MODE) printf("dentro do if do loop em csignal\n");
+                prio = tcb_sem->prio;
                 PQueue = sem->fila;
             }
 
+            if(DEBUG_MODE) printf("antes de pegar o prox tcb no loop em csignal\n" );
             NextFila2(sem->fila);
-            tcb = (TCB_t *)GetAtIteratorFila2(sem->fila);
+            tcb_sem = (TCB_t *)GetAtIteratorFila2(sem->fila);
         }
 
-        tcb = (TCB_t *)GetAtIteratorFila2(PQueue);
-        tcb->state = PROCST_APTO;
+        if(DEBUG_MODE) printf("antes de pegar o tcb de maior prioridade em csignal");
+        tcb_sem = (TCB_t *)GetAtIteratorFila2(PQueue); // Encontra o TCB na fila do semáforo, mas falta encontrar o mesmo TCB nas filas de prioridades
+        tcb_sem->state = PROCST_APTO;
+		// na cwait passamos ponteiros das threads, precisa procurar denovo?
+        TCB_t *tcb = findThreadByIDInAllQueues(tcb_sem->tid);
+        tcb->state = PROCST_APTO; // o TCB, que estava bloqueado, volta para o estado apto
+
+        if(DEBUG_MODE) printf("antes de escalonar em csignal\n" );
+        ScheduleThreads(0);
     }
 
 	return 0;
