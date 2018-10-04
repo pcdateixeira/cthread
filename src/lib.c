@@ -374,10 +374,17 @@ int csem_init(csem_t *sem, int count){
     if(sem == NULL)
         return -1;
 
+    PFILA2 PQueue = malloc(sizeof(FILA2));
+    PQueue->it = NULL;
+    PQueue->first = NULL;
+    PQueue->last = NULL;
+
+    sem->fila = PQueue;
+
     CreateFila2(sem->fila);
     /*FILA2 filaTemp ;
     CreateFila2(&filaTemp);         //por alguma razao da segmentation fault se tentarmos mandar um PFILA2 mas isso nao acontece para &FILA2
-    sem->fila =&filaTemp;*/	    //deixar sem teste de resultado q nem nas outras
+    sem->fila =&filaTemp;*/
 
     sem->count = count;
 
