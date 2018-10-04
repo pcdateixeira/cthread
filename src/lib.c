@@ -267,7 +267,7 @@ int ccreate (void *(*start)(void *), void *arg, int prio){
         return -1;
 
     if(isInitialized == 0)
-	initializeCthread();
+		initializeCthread();
 
     ucontext_t *linkContext = makeLinkContext(exitThread);
 
@@ -425,12 +425,15 @@ int csignal(csem_t *sem){
         return -1;
 	
     if(sem->fila == NULL)
-	return -1;
+		return -1;
 
     if(DEBUG_MODE) printf("antes de checar as filas do semaforo em csignal. %p = semaforo %p=semaforo->fila\n",sem,sem->fila);
 
     FirstFila2(sem->fila);
     TCB_t *tcb_sem = (TCB_t *)GetAtIteratorFila2(sem->fila);
+	
+	if(tcb_sem == NULL)
+		return -1;
 
     if(DEBUG_MODE) printf("tcb_sem = %p \n",tcb_sem );
 
@@ -457,7 +460,7 @@ int csignal(csem_t *sem){
         if(DEBUG_MODE) printf("antes de pegar o tcb de maior prioridade em csignal");
         tcb_sem = (TCB_t *)GetAtIteratorFila2(PQueue); // Encontra o TCB na fila do semáforo, mas falta encontrar o mesmo TCB nas filas de prioridades
         tcb_sem->state = PROCST_APTO;
-	// na cwait passamos ponteiros das threads, precisa procurar denovo?
+		// na cwait passamos ponteiros das threads, precisa procurar denovo?
         TCB_t *tcb = findThreadByIDInAllQueues(tcb_sem->tid);
         tcb->state = PROCST_APTO; // o TCB, que estava bloqueado, volta para o estado apto
 
