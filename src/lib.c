@@ -401,7 +401,7 @@ int cwait(csem_t *sem){
     if(sem == NULL)
         return -1;
 
-    if(sem->count < 0)
+    if(sem->count <= 0)
     {
         TCBCurrent->state = PROCST_BLOQ;
 
