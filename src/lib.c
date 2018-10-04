@@ -11,7 +11,7 @@
 #define HIGH_PRIORITY 0
 
 #define BYTES_IN_STACK 8192                   //LEMBRAR : antes de entregar aumentar o stack.
-#define DEBUG_MODE 1                          //para encapsular os prints de debug com algo do tipo  if(DEBUG_MODE) print("aconteceu x \n");
+#define DEBUG_MODE 0                          //para encapsular os prints de debug com algo do tipo  if(DEBUG_MODE) print("aconteceu x \n");
 
 // Relacionado a variável data do tcb
 typedef struct tcbExtra{
