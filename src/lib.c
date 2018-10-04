@@ -401,7 +401,7 @@ int cwait(csem_t *sem){
     if(sem == NULL)
         return -1;
 
-    if(sem->count <= 0)
+    if(sem->count < 0)
     {
         TCBCurrent->state = PROCST_BLOQ;
 
@@ -437,7 +437,7 @@ int csignal(csem_t *sem){
 
     if(DEBUG_MODE) printf("tcb_sem = %p \n",tcb_sem );
 
-    if(sem->count > 0)
+    if(sem->count <= 0)
     {
         if(DEBUG_MODE) printf("antes de pegar a prioridade em csignal\n" );
         prio = tcb_sem->prio;
